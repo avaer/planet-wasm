@@ -6,6 +6,7 @@
 #include "heightfield.h"
 #include "cull.h"
 #include "noiser.h"
+#include "noise.h"
 // #include <iostream>
 
 extern "C" {
@@ -94,6 +95,14 @@ EMSCRIPTEN_KEEPALIVE void cllideBoxEther(int dims[3], float *potential, int shif
   result[0] = (unsigned int)collided;
   result[1] = (unsigned int)floored;
   result[2] = (unsigned int)ceiled;
+}
+
+EMSCRIPTEN_KEEPALIVE void doMarchingCubes2(int dims[3], float *potential, float shift[3], float scale[3], float *positions, unsigned int *faces, unsigned int *positionIndex, unsigned int *faceIndex) {
+  marchingCubes2(dims, potential, shift, scale, positions, faces, *positionIndex, *faceIndex);
+}
+
+EMSCRIPTEN_KEEPALIVE void doNoise2(int seed, double frequency, int octaves, int dims[3], int border, float offset, float *potential) {
+  noise2(seed, frequency, octaves, dims, border, offset, potential);
 }
 
 EMSCRIPTEN_KEEPALIVE void doFree(void *ptr) {

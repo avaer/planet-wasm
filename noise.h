@@ -14,4 +14,6 @@ class Noise {
   double in3D(double x, double y, double z);
 };
 
+void noise2(int seed, double frequency, int octaves, int dims[3], int border, float offset, float *potential);
+
 #endif

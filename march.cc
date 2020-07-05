@@ -619,3 +619,60 @@ void collideBoxEther(int dims[3], float *potential, int shift[3], float *positio
     positionSpec[2] = position.z;
   }
 }
+
+void marchingCubes2(int dims[3], float *potential, float shift[3], float scale[3], float *positions, unsigned int *faces, unsigned int &positionIndex, unsigned int &faceIndex) {
+  positionIndex = 0;
+  faceIndex = 0;
+
+  int n = 0;
+  float grid[8] = {0};
+  int edges[12] = {0};
+  int x[3] = {0};
+
+  //March over the volume
+  for(x[2]=0; x[2]<dims[2]-1; ++x[2], n+=dims[0])
+  for(x[1]=0; x[1]<dims[1]-1; ++x[1], ++n)
+  for(x[0]=0; x[0]<dims[0]-1; ++x[0], ++n) {
+    //For each cell, compute cube mask
+    int cube_index = 0;
+    for(int i=0; i<8; ++i) {
+      int *v = cubeVerts[i];
+      int potentialIndex = (x[0]+v[0]) +
+        (((x[2]+v[2])) * dims[0]) +
+        ((x[1]+v[1]) * dims[0] * dims[1]);
+      float s = potential[potentialIndex];
+      grid[i] = s;
+      cube_index |= (s > 0) ? 1 << i : 0;
+    }
+    //Compute vertices
+    int edge_mask = edgeTable[cube_index];
+    if(edge_mask == 0) {
+      continue;
+    }
+    for(int i=0; i<12; ++i) {
+      if((edge_mask & (1<<i)) == 0) {
+        continue;
+      }
+      edges[i] = positionIndex / 3;
+      int *e = edgeIndex[i];
+      int *p0 = cubeVerts[e[0]];
+      int *p1 = cubeVerts[e[1]];
+      float a = grid[e[0]];
+      float b = grid[e[1]];
+      float d = a - b;
+      float t = a / d;
+      for(int j=0; j<3; ++j) {
+        positions[positionIndex + j] = (((x[j] + p0[j]) + t * (p1[j] - p0[j])) + shift[j]) * scale[j];
+      }
+
+      positionIndex += 3;
+    }
+    //Add faces
+    int *f = triTable[cube_index];
+    for(int i=0;f[i]!=-1;i+=3) {
+      faces[faceIndex++] = edges[f[i]];
+      faces[faceIndex++] = edges[f[i+2]];
+      faces[faceIndex++] = edges[f[i+1]];
+    }
+  }
+}
