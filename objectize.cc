@@ -97,8 +97,8 @@ EMSCRIPTEN_KEEPALIVE void cllideBoxEther(int dims[3], float *potential, int shif
   result[2] = (unsigned int)ceiled;
 }
 
-EMSCRIPTEN_KEEPALIVE void doMarchingCubes2(int dims[3], float *potential, float shift[3], float scale[3], float *positions, unsigned int *faces, unsigned int *positionIndex, unsigned int *faceIndex) {
-  marchingCubes2(dims, potential, shift, scale, positions, faces, *positionIndex, *faceIndex);
+EMSCRIPTEN_KEEPALIVE void doMarchingCubes2(int dims[3], float *potential, float shift[3], float scale[3], float *positions, float *barycentrics, unsigned int *positionIndex, unsigned int *barycentricIndex) {
+  marchingCubes2(dims, potential, shift, scale, positions, barycentrics, *positionIndex, *barycentricIndex);
 }
 
 EMSCRIPTEN_KEEPALIVE void doNoise2(int seed, double frequency, int octaves, int dims[3], int border, float offset, float *potential) {

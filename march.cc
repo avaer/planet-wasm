@@ -1,6 +1,7 @@
 #include "march.h"
 #include "vector.h"
 #include <cstdlib>
+#include <array>
 
 int edgeTable[256]={
 0x0  , 0x109, 0x203, 0x30a, 0x406, 0x50f, 0x605, 0x70c,
@@ -620,13 +621,13 @@ void collideBoxEther(int dims[3], float *potential, int shift[3], float *positio
   }
 }
 
-void marchingCubes2(int dims[3], float *potential, float shift[3], float scale[3], float *positions, unsigned int *faces, unsigned int &positionIndex, unsigned int &faceIndex) {
+void marchingCubes2(int dims[3], float *potential, float shift[3], float scale[3], float *positions, float *barycentrics, unsigned int &positionIndex, unsigned int &barycentricIndex) {
   positionIndex = 0;
-  faceIndex = 0;
+  barycentricIndex = 0;
 
   int n = 0;
   float grid[8] = {0};
-  int edges[12] = {0};
+  std::array<std::array<float, 3>, 12> edges;
   int x[3] = {0};
 
   //March over the volume
@@ -649,30 +650,48 @@ void marchingCubes2(int dims[3], float *potential, float shift[3], float scale[3
     if(edge_mask == 0) {
       continue;
     }
-    for(int i=0; i<12; ++i) {
-      if((edge_mask & (1<<i)) == 0) {
-        continue;
-      }
-      edges[i] = positionIndex / 3;
-      int *e = edgeIndex[i];
-      int *p0 = cubeVerts[e[0]];
-      int *p1 = cubeVerts[e[1]];
-      float a = grid[e[0]];
-      float b = grid[e[1]];
-      float d = a - b;
-      float t = a / d;
-      for(int j=0; j<3; ++j) {
-        positions[positionIndex + j] = (((x[j] + p0[j]) + t * (p1[j] - p0[j])) + shift[j]) * scale[j];
-      }
+	for(int i=0; i<12; ++i) {
+	  if((edge_mask & (1<<i)) == 0) {
+	    continue;
+	  }
+	  int *e = edgeIndex[i];
+	  int *p0 = cubeVerts[e[0]];
+	  int *p1 = cubeVerts[e[1]];
+	  float a = grid[e[0]];
+	  float b = grid[e[1]];
+	  float d = a - b;
+	  float t = a / d;
+	  std::array<float, 3> &v = edges[i];
+	  for(int j=0; j<3; ++j) {
+	    v[j] = (((x[j] + p0[j]) + t * (p1[j] - p0[j])) + shift[j]) * scale[j];
+	  }
+	}
+	//Add faces
+	int *f = triTable[cube_index];
+	for(int i=0;f[i]!=-1;i+=3) {
+	  std::array<float, 3> &a = edges[f[i]];
+	  std::array<float, 3> &b = edges[f[i+2]];
+	  std::array<float, 3> &c = edges[f[i+1]];
 
-      positionIndex += 3;
-    }
-    //Add faces
-    int *f = triTable[cube_index];
-    for(int i=0;f[i]!=-1;i+=3) {
-      faces[faceIndex++] = edges[f[i]];
-      faces[faceIndex++] = edges[f[i+2]];
-      faces[faceIndex++] = edges[f[i+1]];
-    }
+	  positions[positionIndex++] = a[0];
+	  positions[positionIndex++] = a[1];
+	  positions[positionIndex++] = a[2];
+	  positions[positionIndex++] = b[0];
+	  positions[positionIndex++] = b[1];
+	  positions[positionIndex++] = b[2];
+	  positions[positionIndex++] = c[0];
+	  positions[positionIndex++] = c[1];
+	  positions[positionIndex++] = c[2];
+
+	  barycentrics[barycentricIndex++] = 1;
+	  barycentrics[barycentricIndex++] = 0;
+	  barycentrics[barycentricIndex++] = 0;
+	  barycentrics[barycentricIndex++] = 0;
+	  barycentrics[barycentricIndex++] = 1;
+	  barycentrics[barycentricIndex++] = 0;
+	  barycentrics[barycentricIndex++] = 0;
+	  barycentrics[barycentricIndex++] = 0;
+	  barycentrics[barycentricIndex++] = 1;
+	}
   }
 }
