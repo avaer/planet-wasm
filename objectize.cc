@@ -101,8 +101,8 @@ EMSCRIPTEN_KEEPALIVE void doMarchingCubes2(int dims[3], float *potential, float 
   marchingCubes2(dims, potential, shift, scale, positions, barycentrics, *positionIndex, *barycentricIndex);
 }
 
-EMSCRIPTEN_KEEPALIVE void doNoise2(int seed, double frequency, int octaves, int dims[3], int border, float offset, float *potential) {
-  noise2(seed, frequency, octaves, dims, border, offset, potential);
+EMSCRIPTEN_KEEPALIVE void doNoise2(int seed, double frequency, int octaves, int dims[3], float shifts[3], int border, float offset, float *potential) {
+  noise2(seed, frequency, octaves, dims, shifts, border, offset, potential);
 }
 
 EMSCRIPTEN_KEEPALIVE void doFree(void *ptr) {

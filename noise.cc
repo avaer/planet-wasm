@@ -8,14 +8,14 @@ Noise::Noise(int s, double frequency, int octaves) : fastNoise(s) {
 
 Noise::~Noise() {}
 
-double Noise::in2D(double x, double y) {
+double Noise::in2D(float x, float y) {
   return (1.0 + fastNoise.GetSimplexFractal(x, y)) / 2.0;
 }
-double Noise::in3D(double x, double y, double z) {
+double Noise::in3D(float x, float y, float z) {
   return (1.0 + fastNoise.GetSimplexFractal(x, y, z)) / 2.0;
 }
 
-void noise2(int seed, double frequency, int octaves, int dims[3], int border, float offset, float *potential) {
+void noise2(int seed, double frequency, int octaves, int dims[3], float shifts[3], int border, float offset, float *potential) {
   memset(potential, 0, dims[0]*dims[1]*dims[2]*sizeof(float));
   Noise noise(seed, frequency, octaves);
   for (int x = border; x < dims[0] - border; x++) {
@@ -24,7 +24,7 @@ void noise2(int seed, double frequency, int octaves, int dims[3], int border, fl
         int index = (x) +
           (z * dims[0]) +
           (y * dims[0] * dims[1]);
-        potential[index] = offset + noise.in3D(x, y, z);
+        potential[index] = offset + noise.in3D(x + shifts[0], y + shifts[1], z + shifts[2]);
       }
     }
   }
