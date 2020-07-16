@@ -153,20 +153,20 @@ void noise3(int seed, float baseHeight, float *freqs, int *octaves, float *scale
 
       // std::cout << "get " << ax << " " << az << " " << (elevationNoise1.in2D(ax, az) * amps[0]) << " " << x << " " << z << " : " << shifts[0] << " " << shifts[2] << " " << dims[0] << " " << dims[2] << std::endl;
 
-      float height = std::min<float>(
+      float height = // std::min<float>(
         baseHeight +
           elevationNoise1.in2D((ax + uvs[0]) * scales[0], (az + uvs[0]) * scales[0]) * amps[0] +
           elevationNoise2.in2D((ax + uvs[1]) * scales[1], (az + uvs[1]) * scales[1]) * amps[1] +
-          elevationNoise3.in2D((ax + uvs[2]) * scales[2], (az + uvs[2]) * scales[2]) * amps[2],
+          elevationNoise3.in2D((ax + uvs[2]) * scales[2], (az + uvs[2]) * scales[2]) * amps[2];/*,
         128 - 0.1
-      );
+      ); */
 
       for (int y = 0; y < dims[1]; y++) {
         int index = (x) +
           (z * dims[0]) +
           (y * dims[0] * dims[1]);
         float ay = shifts[1] + y;
-        potential[index] = ay < height ? -offset : offset;
+        potential[index] = (ay < height) ? -offset : offset;
       }
     }
   }
@@ -205,8 +205,6 @@ void noise3(int seed, float baseHeight, float *freqs, int *octaves, float *scale
 
           const float caveRadius = caveRadiusNoise.in2D(nx, nz);
 
-          // std::cout << "worm " << j << " " << numWorms << " " << cavePosX << " " << cavePosY << " " << cavePosZ << " " << caveLength << " " << theta << " " << deltaTheta << " " << phi << " " << deltaPhi << std::endl;
-
           for (int len = 0; len < caveLength; len++) {
             const int nx = aox * dims[0] + i + len;
             const int nz = aoz * dims[2] + i + len;
@@ -230,6 +228,18 @@ void noise3(int seed, float baseHeight, float *freqs, int *octaves, float *scale
             }
           }
         }
+      }
+    }
+  }
+
+  if (shifts[1] < 1) {
+    const int y = 0;
+    for (int x = 0; x < dims[0]; x++) {
+      for (int z = 0; z < dims[2]; z++) {
+        int index = (x) +
+          (z * dims[0]) +
+          (y * dims[0] * dims[1]);
+        potential[index] = -offset;
       }
     }
   }
