@@ -1,8 +1,10 @@
 #include "noise.h"
 #include <string.h>
+#include <iostream>
+#include <vector>
+#include <array>
 #define _USE_MATH_DEFINES
 #include <cmath>
-#include <iostream>
 #include "biomes.h"
 
 #define PI M_PI
@@ -11,9 +13,11 @@ Noise::Noise(int s, double frequency, int octaves) : fastNoise(s) {
   fastNoise.SetFrequency(frequency);
   fastNoise.SetFractalOctaves(octaves);
 }
-
+Noise::Noise(const Noise &noise) : fastNoise(noise.fastNoise) {}
 Noise::~Noise() {}
-
+Noise &Noise::operator=(const Noise &noise) {
+  fastNoise = noise.fastNoise;
+}
 double Noise::in2D(float x, float y) {
   return (1.0 + fastNoise.GetSimplexFractal(x, y)) / 2.0;
 }
@@ -117,12 +121,25 @@ void _fillOblateSpheroid(float centerX, float centerY, float centerZ, int minX, 
   }
 }
 
+class AxisElevationNoise {
+public:
+  AxisElevationNoise(int &seed, float *freqs, int *octaves) {
+    noises.reserve(6);
+    for (int i = 0; i < 6; i++) {
+      noises.push_back(std::array<Noise, 3>{
+        Noise(seed++, freqs[0], octaves[0]),
+        Noise(seed++, freqs[1], octaves[1]),
+        Noise(seed++, freqs[1], octaves[2])
+      });
+    }
+  }
+  std::vector<std::array<Noise, 3>> noises;
+};
+
 void noise3(int seed, float baseHeight, float *freqs, int *octaves, float *scales, float *uvs, float *amps, int dims[3], float shifts[3], float offset, float *potential) {
   memset(potential, 0, dims[0]*dims[1]*dims[2]*sizeof(float));
-  // Noise noise(seed, frequency, frequency);
-  Noise elevationNoise1(seed++, freqs[0], octaves[0]);
-  Noise elevationNoise2(seed++, freqs[1], octaves[1]);
-  Noise elevationNoise3(seed++, freqs[2], octaves[2]);
+  AxisElevationNoise elevationNoise(seed, freqs, octaves);
+
   // Noise oceanNoise(seed++, 0.001, 4);
   // Noise riverNoise(seed++, 0.001, 4);
   // Noise temperatureNoise(seed++, 0.001, 4);
@@ -155,9 +172,9 @@ void noise3(int seed, float baseHeight, float *freqs, int *octaves, float *scale
 
       float height = // std::min<float>(
         baseHeight +
-          elevationNoise1.in2D((ax + uvs[0]) * scales[0], (az + uvs[0]) * scales[0]) * amps[0] +
-          elevationNoise2.in2D((ax + uvs[1]) * scales[1], (az + uvs[1]) * scales[1]) * amps[1] +
-          elevationNoise3.in2D((ax + uvs[2]) * scales[2], (az + uvs[2]) * scales[2]) * amps[2];/*,
+          elevationNoise.noises[0][0].in2D((ax + uvs[0]) * scales[0], (az + uvs[0]) * scales[0]) * amps[0] +
+          elevationNoise.noises[0][1].in2D((ax + uvs[1]) * scales[1], (az + uvs[1]) * scales[1]) * amps[1] +
+          elevationNoise.noises[0][2].in2D((ax + uvs[2]) * scales[2], (az + uvs[2]) * scales[2]) * amps[2];/*,
         128 - 0.1
       ); */
 

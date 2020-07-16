@@ -8,7 +8,9 @@ class Noise {
   FastNoise fastNoise;
 
   explicit Noise(int s = 0, double frequency = 0.01, int octaves = 1);
+  Noise(const Noise &noise);
   ~Noise();
+  Noise &operator=(const Noise &noise);
 
   double in2D(float x, float y);
   double in3D(float x, float y, float z);
