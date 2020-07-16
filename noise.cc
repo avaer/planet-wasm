@@ -136,9 +136,9 @@ public:
   std::vector<std::array<Noise, 3>> noises;
 };
 
-void noise3(int seed, float baseHeight, float *freqs, int *octaves, float *scales, float *uvs, float *amps, int dims[3], float shifts[3], float offset, float *potential) {
+void noise3(int seed, float baseHeight, float *freqs, int *octaves, float *scales, float *uvs, float *amps, int dims[3], float shifts[3], int limits[3], float wormRate, float offset, float *potential) {
   memset(potential, 0, dims[0]*dims[1]*dims[2]*sizeof(float));
-  AxisElevationNoise elevationNoise(seed, freqs, octaves);
+  AxisElevationNoise axisElevationNoise(seed, freqs, octaves);
 
   // Noise oceanNoise(seed++, 0.001, 4);
   // Noise riverNoise(seed++, 0.001, 4);
@@ -149,7 +149,7 @@ void noise3(int seed, float baseHeight, float *freqs, int *octaves, float *scale
   Noise nestNoiseX(seed++, 2, 1);
   Noise nestNoiseY(seed++, 2, 1);
   Noise nestNoiseZ(seed++, 2, 1);
-  Noise wormNoise(seed++, 2, 1);
+  Noise numWormsNoise(seed++, 0.1, 1);
   Noise caveLengthNoise(seed++, 2, 1);
   Noise caveRadiusNoise(seed++, 2, 1);
   Noise caveThetaNoise(seed++, 2, 1);
@@ -161,87 +161,127 @@ void noise3(int seed, float baseHeight, float *freqs, int *octaves, float *scale
   Noise caveCenterNoiseY(seed++, 2, 1);
   Noise caveCenterNoiseZ(seed++, 2, 1);
 
-  // std::cout << "elevation " << baseHeight << " " << freqs[0] << " " << octaves[0] << " " << amps[0] << " " << amps[0] << std::endl;
-
   for (int x = 0; x < dims[0]; x++) {
+    float ax = shifts[0] + x;
+    float cx = ax - (float)(limits[0])/2.0f;
     for (int z = 0; z < dims[2]; z++) {
-      float ax = shifts[0] + x;
       float az = shifts[2] + z;
-
-      // std::cout << "get " << ax << " " << az << " " << (elevationNoise1.in2D(ax, az) * amps[0]) << " " << x << " " << z << " : " << shifts[0] << " " << shifts[2] << " " << dims[0] << " " << dims[2] << std::endl;
-
-      float height = // std::min<float>(
-        baseHeight +
-          elevationNoise.noises[0][0].in2D((ax + uvs[0]) * scales[0], (az + uvs[0]) * scales[0]) * amps[0] +
-          elevationNoise.noises[0][1].in2D((ax + uvs[1]) * scales[1], (az + uvs[1]) * scales[1]) * amps[1] +
-          elevationNoise.noises[0][2].in2D((ax + uvs[2]) * scales[2], (az + uvs[2]) * scales[2]) * amps[2];/*,
-        128 - 0.1
-      ); */
-
+      float cz = az - (float)(limits[2])/2.0f;
       for (int y = 0; y < dims[1]; y++) {
+        float ay = shifts[1] + y;
+        float cy = ay - (float)(limits[1])/2.0f;
+
+        std::array<Noise, 3> *elevationNoise;
+        float u, v, w;
+        if (std::abs(cx) >= std::abs(cy) && std::abs(cx) >= std::abs(cz)) {
+          if (cx >= 0) {
+            elevationNoise = &axisElevationNoise.noises[0];
+            u = az;
+            v = ay;
+            w = cx;
+          } else {
+            elevationNoise = &axisElevationNoise.noises[1];
+            u = az;
+            v = ay;
+            w = -cx;
+          }
+        } else if (std::abs(cy) >= std::abs(cx) && std::abs(cy) >= std::abs(cz)) {
+          if (cy >= 0) {
+            elevationNoise = &axisElevationNoise.noises[2];
+            u = ax;
+            v = az;
+            w = cy;
+          } else {
+            elevationNoise = &axisElevationNoise.noises[3];
+            u = ax;
+            v = az;
+            w = -cy;
+          }
+        } else {
+          if (cz >= 0) {
+            elevationNoise = &axisElevationNoise.noises[4];
+            u = ax;
+            v = ay;
+            w = cz;
+          } else {
+            elevationNoise = &axisElevationNoise.noises[5];
+            u = ax;
+            v = ay;
+            w = -cz;
+          }
+        }
+
+        float height = baseHeight +
+          (*elevationNoise)[0].in2D((u + uvs[0]) * scales[0], (v + uvs[0]) * scales[0]) * amps[0] +
+          (*elevationNoise)[1].in2D((u + uvs[1]) * scales[1], (v + uvs[1]) * scales[1]) * amps[1] +
+          (*elevationNoise)[2].in2D((u + uvs[2]) * scales[2], (v + uvs[2]) * scales[2]) * amps[2];
         int index = (x) +
           (z * dims[0]) +
           (y * dims[0] * dims[1]);
-        float ay = shifts[1] + y;
-        potential[index] = (ay < height) ? -offset : offset;
+        potential[index] = (w < height) ? -offset : offset;
       }
     }
   }
 
-  constexpr float NUM_CELLS_HEIGHT = 10;
   const int ox = (int)(shifts[0]/dims[0]);
   const int oy = (int)(shifts[1]/dims[1]);
   const int oz = (int)(shifts[2]/dims[2]);
   for (int doz = -4; doz <= 4; doz++) {
-    for (int dox = -4; dox <= 4; dox++) {
-      const int aox = ox + dox;
-      const int aoz = oz + doz;
-      const int nx = aox * dims[0];
-      const int nz = aoz * dims[2];
-      const float n = nestNoise.in2D(nx, nz);
-      const int numNests = (int)std::floor(std::max<float>(n * 4, 0));
+    for (int doy = -4; doy <= 4; doy++) {
+      for (int dox = -4; dox <= 4; dox++) {
+        const int aox = ox + dox;
+        const int aoy = oy + doy;
+        const int aoz = oz + doz;
 
-      for (int i = 0; i < numNests; i++) {
-        const int nx = aox * dims[0] + i * 1000;
-        const int nz = aoz * dims[2] + i * 1000;
-        const float nestX = (float)(aox * dims[0]) + nestNoiseX.in2D(nx, nz) * dims[0];
-        const float nestY = nestNoiseY.in2D(nx, nz) * NUM_CELLS_HEIGHT;
-        const float nestZ = (float)(aoz * dims[2]) + nestNoiseZ.in2D(nx, nz) * dims[2];
+        const int nx = aox * dims[0];
+        const int ny = aoy * dims[1];
+        const int nz = aoz * dims[2];
+        const float n = nestNoise.in3D(nx, ny, nz);
+        const int numNests = (int)std::floor(std::max<float>(n * 2, 0));
 
-        const int numWorms = 1 + (int)std::floor(std::max<float>(wormNoise.in2D(nx, nz) * 3, 0));
-        for (int j = 0; j < numWorms; j++) {
-          float cavePosX = nestX;
-          float cavePosY = nestY;
-          float cavePosZ = nestZ;
-          const int caveLength = (int)((0.75 + caveLengthNoise.in2D(nx, nz) * 0.25) * dims[0] * 2);
+        for (int i = 0; i < numNests; i++) {
+          const int nx = aox * dims[0] + i * 1000;
+          const int ny = aoy * dims[1] + i * 1000;
+          const int nz = aoz * dims[2] + i * 1000;
+          const float nestX = (float)(aox * dims[0]) + nestNoiseX.in2D(ny, nz) * dims[0];
+          const float nestY = (float)(aoy * dims[1]) + nestNoiseY.in2D(nx, nz) * dims[0];
+          const float nestZ = (float)(aoz * dims[2]) + nestNoiseZ.in2D(nx, ny) * dims[2];
 
-          float theta = caveThetaNoise.in2D(nx, nz) * PI * 2;
-          float deltaTheta = 0;
-          float phi = cavePhiNoise.in2D(nx, nz) * PI * 2;
-          float deltaPhi = 0;
+          const int numWorms = (int)std::floor(std::max<float>(numWormsNoise.in3D(nx, ny, nz) * wormRate, 0));
+          for (int j = 0; j < numWorms; j++) {
+            float cavePosX = nestX;
+            float cavePosY = nestY;
+            float cavePosZ = nestZ;
+            const int caveLength = (int)((0.75 + caveLengthNoise.in3D(nx, ny, nz) * 0.25) * dims[0] * 2);
 
-          const float caveRadius = caveRadiusNoise.in2D(nx, nz);
+            float theta = caveThetaNoise.in2D(nx, nz) * PI * 2;
+            float deltaTheta = 0;
+            float phi = cavePhiNoise.in2D(nx, nz) * PI * 2;
+            float deltaPhi = 0;
 
-          for (int len = 0; len < caveLength; len++) {
-            const int nx = aox * dims[0] + i + len;
-            const int nz = aoz * dims[2] + i + len;
+            const float caveRadius = caveRadiusNoise.in3D(nx, ny, nz);
 
-            cavePosX += sin(theta) * cos(phi);
-            cavePosY += cos(theta) * cos(phi);
-            cavePosZ += sin(phi);
+            for (int len = 0; len < caveLength; len++) {
+              const int nx = aox * dims[0] + i + len;
+              const int nz = aoz * dims[2] + i + len;
 
-            theta += deltaTheta * 0.2;
-            deltaTheta = (deltaTheta * 0.9) + (-0.5 + caveDeltaThetaNoise.in2D(nx, nz));
-            phi = phi/2 + deltaPhi/4;
-            deltaPhi = (deltaPhi * 0.75) + (-0.5 + caveDeltaPhiNoise.in2D(nx, nz));
+              cavePosX += sin(theta) * cos(phi);
+              cavePosY += cos(theta) * cos(phi);
+              cavePosZ += sin(phi);
 
-            if (caveFillNoise.in2D(nx, nz) >= 0.25) {
-              const float centerPosX = cavePosX + (caveCenterNoiseX.in2D(nx, nz) * 4 - 2) * 0.2;
-              const float centerPosY = cavePosY + (caveCenterNoiseY.in2D(nx, nz) * 4 - 2) * 0.2;
-              const float centerPosZ = cavePosZ + (caveCenterNoiseZ.in2D(nx, nz) * 4 - 2) * 0.2;
+              theta += deltaTheta * 0.2;
+              deltaTheta = (deltaTheta * 0.9) + (-0.5 + caveDeltaThetaNoise.in3D(nx, ny, nz));
+              phi = phi/2 + deltaPhi/4;
+              deltaPhi = (deltaPhi * 0.75) + (-0.5 + caveDeltaPhiNoise.in3D(nx, ny, nz));
 
-              const float radius = 2 + 3.5 * caveRadius * sin(len * PI / caveLength);
-              _fillOblateSpheroid(centerPosX, centerPosY, centerPosZ, ox * dims[0], oy * dims[1], oz * dims[2], (ox + 1) * dims[0], (oy + 1) * dims[1], (oz + 1) * dims[2], radius, dims, potential);
+              if (caveFillNoise.in3D(nx, ny, nz) >= 0.25) {
+                const float centerPosX = cavePosX + (caveCenterNoiseX.in2D(ny, nz) * 4 - 2) * 0.2;
+                const float centerPosY = cavePosY + (caveCenterNoiseY.in2D(nx, nz) * 4 - 2) * 0.2;
+                const float centerPosZ = cavePosZ + (caveCenterNoiseZ.in2D(nx, ny) * 4 - 2) * 0.2;
+
+                const float radius = 2 + 3.5 * caveRadius * sin(len * PI / caveLength);
+                _fillOblateSpheroid(centerPosX, centerPosY, centerPosZ, ox * dims[0], oy * dims[1], oz * dims[2], (ox + 1) * dims[0], (oy + 1) * dims[1], (oz + 1) * dims[2], radius, dims, potential);
+              }
             }
           }
         }

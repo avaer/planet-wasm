@@ -17,6 +17,6 @@ class Noise {
 };
 
 void noise2(int seed, double frequency, int octaves, int dims[3], float shifts[3], float offset, float *potential);
-void noise3(int seed, float baseHeight, float *freqs, int *octaves, float *scales, float *uvs, float *amps, int dims[3], float shifts[3], float offset, float *potential);
+void noise3(int seed, float baseHeight, float *freqs, int *octaves, float *scales, float *uvs, float *amps, int dims[3], float shifts[3], int limits[3], float wormRate, float offset, float *potential);
 
 #endif
