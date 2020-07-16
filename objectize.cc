@@ -105,8 +105,8 @@ EMSCRIPTEN_KEEPALIVE void doNoise2(int seed, double frequency, int octaves, int 
   noise2(seed, frequency, octaves, dims, shifts, offset, potential);
 }
 
-EMSCRIPTEN_KEEPALIVE void doNoise3(int seed, float baseHeight, float *freqs, int *octaves, float *scales, float *uvs, float *amps, int dims[3], float shifts[3], int limits[3], float wormRate, float offset, float *potential) {
-  noise3(seed, baseHeight, freqs, octaves, scales, uvs, amps, dims, shifts, limits, wormRate, offset, potential);
+EMSCRIPTEN_KEEPALIVE void doNoise3(int seed, float baseHeight, float *freqs, int *octaves, float *scales, float *uvs, float *amps, int dims[3], float shifts[3], int limits[3], float wormRate, float wormRadiusBase, float wormRadiusRate, float offset, float *potential) {
+  noise3(seed, baseHeight, freqs, octaves, scales, uvs, amps, dims, shifts, limits, wormRate, wormRadiusBase, wormRadiusRate, offset, potential);
 }
 
 EMSCRIPTEN_KEEPALIVE void doFree(void *ptr) {

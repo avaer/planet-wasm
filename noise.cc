@@ -136,7 +136,7 @@ public:
   std::vector<std::array<Noise, 3>> noises;
 };
 
-void noise3(int seed, float baseHeight, float *freqs, int *octaves, float *scales, float *uvs, float *amps, int dims[3], float shifts[3], int limits[3], float wormRate, float offset, float *potential) {
+void noise3(int seed, float baseHeight, float *freqs, int *octaves, float *scales, float *uvs, float *amps, int dims[3], float shifts[3], int limits[3], float wormRate, float wormRadiusBase, float wormRadiusRate, float offset, float *potential) {
   memset(potential, 0, dims[0]*dims[1]*dims[2]*sizeof(float));
   AxisElevationNoise axisElevationNoise(seed, freqs, octaves);
 
@@ -279,7 +279,7 @@ void noise3(int seed, float baseHeight, float *freqs, int *octaves, float *scale
                 const float centerPosY = cavePosY + (caveCenterNoiseY.in2D(nx, nz) * 4 - 2) * 0.2;
                 const float centerPosZ = cavePosZ + (caveCenterNoiseZ.in2D(nx, ny) * 4 - 2) * 0.2;
 
-                const float radius = 2 + 3.5 * caveRadius * sin(len * PI / caveLength);
+                const float radius = wormRadiusBase + wormRadiusRate * caveRadius * sin(len * PI / caveLength);
                 _fillOblateSpheroid(centerPosX, centerPosY, centerPosZ, ox * dims[0], oy * dims[1], oz * dims[2], (ox + 1) * dims[0], (oy + 1) * dims[1], (oz + 1) * dims[2], radius, dims, potential);
               }
             }
