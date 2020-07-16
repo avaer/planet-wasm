@@ -117,7 +117,7 @@ void _fillOblateSpheroid(float centerX, float centerY, float centerZ, int minX, 
   }
 }
 
-void noise3(int seed, float baseHeight, float *freqs, int *octaves, float *scales, float *uvs, float *amps, int dims[3], float shifts[3], float offset, float *potential, unsigned int *colors) {
+void noise3(int seed, float baseHeight, float *freqs, int *octaves, float *scales, float *uvs, float *amps, int dims[3], float shifts[3], float offset, float *potential) {
   memset(potential, 0, dims[0]*dims[1]*dims[2]*sizeof(float));
   // Noise noise(seed, frequency, frequency);
   Noise elevationNoise1(seed++, freqs[0], octaves[0]);
@@ -160,9 +160,6 @@ void noise3(int seed, float baseHeight, float *freqs, int *octaves, float *scale
           elevationNoise3.in2D((ax + uvs[2]) * scales[2], (az + uvs[2]) * scales[2]) * amps[2],
         128 - 0.1
       );
-
-      int index = (x) + (z * dims[0]);
-      colors[index] = 0;
 
       for (int y = 0; y < dims[1]; y++) {
         int index = (x) +
