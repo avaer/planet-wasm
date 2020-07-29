@@ -136,7 +136,7 @@ public:
   std::vector<std::array<Noise, 3>> noises;
 };
 
-void noise3(int seed, float baseHeight, float *freqs, int *octaves, float *scales, float *uvs, float *amps, int dims[3], float shifts[3], int limits[3], float wormRate, float wormRadiusBase, float wormRadiusRate, float offset, float *potential) {
+void noise3(int seed, float baseHeight, float *freqs, int *octaves, float *scales, float *uvs, float *amps, int dims[3], float shifts[3], int limits[3], float wormRate, float wormRadiusBase, float wormRadiusRate, float objectsRate, float offset, float *potential, float *objectPositions, float *objectQuaternions, unsigned int *objectTypes, unsigned int &numObjects) {
   memset(potential, 0, dims[0]*dims[1]*dims[2]*sizeof(float));
   AxisElevationNoise axisElevationNoise(seed, freqs, octaves);
 
@@ -160,6 +160,10 @@ void noise3(int seed, float baseHeight, float *freqs, int *octaves, float *scale
   Noise caveCenterNoiseX(seed++, 2, 1);
   Noise caveCenterNoiseY(seed++, 2, 1);
   Noise caveCenterNoiseZ(seed++, 2, 1);
+  Noise numObjectsNoise(seed++, 2, 1);
+  Noise objectsNoiseX(seed++, 2, 1);
+  Noise objectsNoiseZ(seed++, 2, 1);
+  Noise objectsTypeNoise(seed++, 2, 1);
 
   for (int x = 0; x < dims[0]; x++) {
     float ax = shifts[0] + x;
@@ -237,7 +241,7 @@ void noise3(int seed, float baseHeight, float *freqs, int *octaves, float *scale
         const int ny = aoy * dims[1];
         const int nz = aoz * dims[2];
         const float n = nestNoise.in3D(nx, ny, nz);
-        const int numNests = (int)std::floor(std::max<float>(n * 2, 0));
+        const int numNests = (int)std::floor(n * 2);
 
         for (int i = 0; i < numNests; i++) {
           const int nx = aox * dims[0] + i * 1000;
@@ -247,7 +251,7 @@ void noise3(int seed, float baseHeight, float *freqs, int *octaves, float *scale
           const float nestY = (float)(aoy * dims[1]) + nestNoiseY.in2D(nx, nz) * dims[0];
           const float nestZ = (float)(aoz * dims[2]) + nestNoiseZ.in2D(nx, ny) * dims[2];
 
-          const int numWorms = (int)std::floor(std::max<float>(numWormsNoise.in3D(nx, ny, nz) * wormRate, 0));
+          const int numWorms = (int)std::floor(numWormsNoise.in3D(nx, ny, nz) * wormRate);
           for (int j = 0; j < numWorms; j++) {
             float cavePosX = nestX;
             float cavePosY = nestY;
@@ -299,5 +303,30 @@ void noise3(int seed, float baseHeight, float *freqs, int *octaves, float *scale
         potential[index] = -offset;
       }
     }
+  }
+
+  float ax = shifts[0];
+  float cx = ax - (float)(limits[0])/2.0f;
+  float ay = shifts[1];
+  float cy = ay - (float)(limits[1])/2.0f;
+  float az = shifts[2];
+  float cz = az - (float)(limits[2])/2.0f;
+  if (shifts[1] == limits[1]) {
+    numObjects = (int)std::floor(numObjectsNoise.in3D(cx, cy, cz) * objectsRate);
+    for (unsigned int i = 0; i < numObjects; i++) {
+      float x = ax + objectsNoiseX.in3D(cx, cy, cz) * dims[0];
+      float y = ay;
+      float z = az + objectsNoiseZ.in3D(cx, cy, cz) * dims[2];
+      objectPositions[i*3] = x;
+      objectPositions[i*3+1] = y;
+      objectPositions[i*3+2] = z;
+      objectQuaternions[i*4] = 0;
+      objectQuaternions[i*4+1] = 0;
+      objectQuaternions[i*4+2] = 0;
+      objectQuaternions[i*4+3] = 0;
+      objectTypes[i] = (unsigned int)std::floor(objectsTypeNoise.in3D(cx, cy, cz) * 0xFF);
+    }
+  } else {
+    numObjects = 0;
   }
 }
