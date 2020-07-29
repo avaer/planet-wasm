@@ -93,7 +93,7 @@ inline float getBiomeHeight(unsigned char b, float x, float z, Noise &elevationN
   // }
 }
 
-void _fillOblateSpheroid(float centerX, float centerY, float centerZ, int minX, int minY, int minZ, int maxX, int maxY, int maxZ, float radius, int *dims, float *ether) {
+void _fillOblateSpheroid(float centerX, float centerY, float centerZ, int minX, int minY, int minZ, int maxX, int maxY, int maxZ, float radius, int *dimsP1, float *ether) {
   const int radiusCeil = (int)std::ceil(radius);
   for (int z = -radiusCeil; z <= radiusCeil; z++) {
     const float lz = centerZ + z;
@@ -108,8 +108,8 @@ void _fillOblateSpheroid(float centerX, float centerY, float centerZ, int minX, 
               if (distance < radius*radius) {
                 // const int index = getEtherIndex(std::floor(lx - minX), std::floor(ly), std::floor(lz - minZ));
                 const int index = std::floor(lx - minX) +
-                  (std::floor(lz - minZ) * dims[0]) +
-                  (std::floor(ly - minY) * dims[0] * dims[1]);
+                  (std::floor(lz - minZ) * dimsP1[0]) +
+                  (std::floor(ly - minY) * dimsP1[0] * dimsP1[1]);
                 const float distance2 = std::sqrt(distance);
                 ether[index] -= 1 + ((radius - distance2) / radius);
               }
@@ -165,13 +165,19 @@ void noise3(int seed, float baseHeight, float *freqs, int *octaves, float *scale
   Noise objectsNoiseZ(seed++, 2, 1);
   Noise objectsTypeNoise(seed++, 2, 1);
 
-  for (int x = 0; x < dims[0]; x++) {
+  int dimsP1[3] = {
+    dims[0]+1,
+    dims[1]+1,
+    dims[2]+1,
+  };
+
+  for (int x = 0; x < dimsP1[0]; x++) {
     float ax = shifts[0] + x;
     float cx = ax - (float)(limits[0])/2.0f;
-    for (int z = 0; z < dims[2]; z++) {
+    for (int z = 0; z < dimsP1[2]; z++) {
       float az = shifts[2] + z;
       float cz = az - (float)(limits[2])/2.0f;
-      for (int y = 0; y < dims[1]; y++) {
+      for (int y = 0; y < dimsP1[1]; y++) {
         float ay = shifts[1] + y;
         float cy = ay - (float)(limits[1])/2.0f;
 
@@ -220,8 +226,8 @@ void noise3(int seed, float baseHeight, float *freqs, int *octaves, float *scale
           (*elevationNoise)[1].in2D((u + uvs[1]) * scales[1], (v + uvs[1]) * scales[1]) * amps[1] +
           (*elevationNoise)[2].in2D((u + uvs[2]) * scales[2], (v + uvs[2]) * scales[2]) * amps[2];
         int index = (x) +
-          (z * dims[0]) +
-          (y * dims[0] * dims[1]);
+          (z * dimsP1[0]) +
+          (y * dimsP1[0] * dimsP1[1]);
         potential[index] = (w < height) ? -offset : offset;
       }
     }
@@ -284,7 +290,7 @@ void noise3(int seed, float baseHeight, float *freqs, int *octaves, float *scale
                 const float centerPosZ = cavePosZ + (caveCenterNoiseZ.in2D(nx, ny) * 4 - 2) * 0.2;
 
                 const float radius = wormRadiusBase + wormRadiusRate * caveRadius * sin(len * PI / caveLength);
-                _fillOblateSpheroid(centerPosX, centerPosY, centerPosZ, ox * dims[0], oy * dims[1], oz * dims[2], (ox + 1) * dims[0], (oy + 1) * dims[1], (oz + 1) * dims[2], radius, dims, potential);
+                _fillOblateSpheroid(centerPosX, centerPosY, centerPosZ, ox * dims[0], oy * dims[1], oz * dims[2], (ox + 1) * dims[0] + 1, (oy + 1) * dims[1] + 1, (oz + 1) * dims[2] + 1, radius, dimsP1, potential);
               }
             }
           }
@@ -293,17 +299,17 @@ void noise3(int seed, float baseHeight, float *freqs, int *octaves, float *scale
     }
   }
 
-  if (shifts[1] < 1) {
+  /* if (shifts[1] < 1) {
     const int y = 0;
-    for (int x = 0; x < dims[0]; x++) {
-      for (int z = 0; z < dims[2]; z++) {
+    for (int x = 0; x < dimsP1[0]; x++) {
+      for (int z = 0; z < dimsP1[2]; z++) {
         int index = (x) +
-          (z * dims[0]) +
-          (y * dims[0] * dims[1]);
+          (z * dimsP1[0]) +
+          (y * dimsP1[0] * dimsP1[1]);
         potential[index] = -offset;
       }
     }
-  }
+  } */
 
   float ax = shifts[0];
   float cx = ax - (float)(limits[0])/2.0f;
