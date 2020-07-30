@@ -160,10 +160,10 @@ void noise3(int seed, float baseHeight, float *freqs, int *octaves, float *scale
   Noise caveCenterNoiseX(seed++, 2, 1);
   Noise caveCenterNoiseY(seed++, 2, 1);
   Noise caveCenterNoiseZ(seed++, 2, 1);
-  Noise numObjectsNoise(seed++, 2, 1);
-  Noise objectsNoiseX(seed++, 2, 1);
-  Noise objectsNoiseZ(seed++, 2, 1);
-  Noise objectsTypeNoise(seed++, 2, 1);
+  Noise numObjectsNoise(seed++, 10, 1);
+  Noise objectsNoiseX(seed++, 10, 1);
+  Noise objectsNoiseZ(seed++, 10, 1);
+  Noise objectsTypeNoise(seed++, 10, 1);
 
   int dimsP1[3] = {
     dims[0]+1,
@@ -317,20 +317,20 @@ void noise3(int seed, float baseHeight, float *freqs, int *octaves, float *scale
   float cy = ay - (float)(limits[1])/2.0f;
   float az = shifts[2];
   float cz = az - (float)(limits[2])/2.0f;
-  if (shifts[1] == limits[1]) {
-    numObjects = (int)std::floor(numObjectsNoise.in3D(cx, cy, cz) * objectsRate);
+  if (shifts[1] == limits[1] - dims[1]) {
+    numObjects = (unsigned int)std::floor(numObjectsNoise.in3D(cx, cy, cz) * objectsRate);
     for (unsigned int i = 0; i < numObjects; i++) {
-      float x = ax + objectsNoiseX.in3D(cx, cy, cz) * dims[0];
-      float y = ay;
-      float z = az + objectsNoiseZ.in3D(cx, cy, cz) * dims[2];
+      float x = ax + objectsNoiseX.in3D(cx + i * 1000.0f, cy + i * 1000.0f, cz + i * 1000.0f) * (float)dims[0];
+      float y = ay + (float)dims[1] / 2.0f - 1.0f;
+      float z = az + objectsNoiseZ.in3D(cx + i * 1000.0f, cy + i * 1000.0f, cz + i * 1000.0f) * (float)dims[2];
       objectPositions[i*3] = x;
       objectPositions[i*3+1] = y;
       objectPositions[i*3+2] = z;
       objectQuaternions[i*4] = 0;
       objectQuaternions[i*4+1] = 0;
       objectQuaternions[i*4+2] = 0;
-      objectQuaternions[i*4+3] = 0;
-      objectTypes[i] = (unsigned int)std::floor(objectsTypeNoise.in3D(cx, cy, cz) * 0xFF);
+      objectQuaternions[i*4+3] = 1;
+      objectTypes[i] = (unsigned int)std::floor(objectsTypeNoise.in3D(cx + i * 1000.0f, cy + i * 1000.0f, cz + i * 1000.0f) * (float)0xFF);
     }
   } else {
     numObjects = 0;
