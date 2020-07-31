@@ -136,6 +136,60 @@ public:
   std::vector<std::array<Noise, 3>> noises;
 };
 
+float getHeight(int seed, float ax, float ay, float az, float baseHeight, float *freqs, int *octaves, float *scales, float *uvs, float *amps, int limits[3]) {
+  float cx = ax - (float)(limits[0])/2.0f;
+  float cy = ay - (float)(limits[1])/2.0f;
+  float cz = az - (float)(limits[2])/2.0f;
+
+  AxisElevationNoise axisElevationNoise(seed, freqs, octaves);
+
+  std::array<Noise, 3> *elevationNoise;
+  float u, v, w;
+  if (std::abs(cx) >= std::abs(cy) && std::abs(cx) >= std::abs(cz)) {
+    if (cx >= 0) {
+      elevationNoise = &axisElevationNoise.noises[0];
+      u = az;
+      v = ay;
+      w = cx;
+    } else {
+      elevationNoise = &axisElevationNoise.noises[1];
+      u = az;
+      v = ay;
+      w = -cx;
+    }
+  } else if (std::abs(cy) >= std::abs(cx) && std::abs(cy) >= std::abs(cz)) {
+    if (cy >= 0) {
+      elevationNoise = &axisElevationNoise.noises[2];
+      u = ax;
+      v = az;
+      w = cy;
+    } else {
+      elevationNoise = &axisElevationNoise.noises[3];
+      u = ax;
+      v = az;
+      w = -cy;
+    }
+  } else {
+    if (cz >= 0) {
+      elevationNoise = &axisElevationNoise.noises[4];
+      u = ax;
+      v = ay;
+      w = cz;
+    } else {
+      elevationNoise = &axisElevationNoise.noises[5];
+      u = ax;
+      v = ay;
+      w = -cz;
+    }
+  }
+
+  float height = baseHeight +
+    (*elevationNoise)[0].in2D((u + uvs[0]) * scales[0], (v + uvs[0]) * scales[0]) * amps[0] +
+    (*elevationNoise)[1].in2D((u + uvs[1]) * scales[1], (v + uvs[1]) * scales[1]) * amps[1] +
+    (*elevationNoise)[2].in2D((u + uvs[2]) * scales[2], (v + uvs[2]) * scales[2]) * amps[2];
+  return height;
+}
+
 void noise3(int seed, float baseHeight, float *freqs, int *octaves, float *scales, float *uvs, float *amps, int dims[3], float shifts[3], int limits[3], float wormRate, float wormRadiusBase, float wormRadiusRate, float objectsRate, float offset, float *potential, float *objectPositions, float *objectQuaternions, unsigned int *objectTypes, unsigned int &numObjects) {
   memset(potential, 0, dims[0]*dims[1]*dims[2]*sizeof(float));
   AxisElevationNoise axisElevationNoise(seed, freqs, octaves);
