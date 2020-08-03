@@ -190,8 +190,9 @@ float getHeight(int seed, float ax, float ay, float az, float baseHeight, float 
   return height;
 }
 
-void noise3(int seed, float baseHeight, float *freqs, int *octaves, float *scales, float *uvs, float *amps, int dims[3], float shifts[3], int limits[3], float wormRate, float wormRadiusBase, float wormRadiusRate, float objectsRate, float offset, float *potential, float *objectPositions, float *objectQuaternions, unsigned int *objectTypes, unsigned int &numObjects) {
+void noise3(int seed, float baseHeight, float *freqs, int *octaves, float *scales, float *uvs, float *amps, int dims[3], float shifts[3], int limits[3], float wormRate, float wormRadiusBase, float wormRadiusRate, float objectsRate, float offset, float *potential, unsigned char *heightfield, float *objectPositions, float *objectQuaternions, unsigned int *objectTypes, unsigned int &numObjects) {
   memset(potential, 0, dims[0]*dims[1]*dims[2]*sizeof(float));
+  memset(heightfield, 0, dims[0]*dims[1]*dims[2]*sizeof(unsigned char));
   AxisElevationNoise axisElevationNoise(seed, freqs, octaves);
 
   // Noise oceanNoise(seed++, 0.001, 4);
@@ -279,10 +280,11 @@ void noise3(int seed, float baseHeight, float *freqs, int *octaves, float *scale
           (*elevationNoise)[0].in2D((u + uvs[0]) * scales[0], (v + uvs[0]) * scales[0]) * amps[0] +
           (*elevationNoise)[1].in2D((u + uvs[1]) * scales[1], (v + uvs[1]) * scales[1]) * amps[1] +
           (*elevationNoise)[2].in2D((u + uvs[2]) * scales[2], (v + uvs[2]) * scales[2]) * amps[2];
-        int index = (x) +
+        int index = x +
           (z * dimsP1[0]) +
           (y * dimsP1[0] * dimsP1[1]);
         potential[index] = (w < height) ? -offset : offset;
+        heightfield[index] = (unsigned char)std::min<float>(std::max<float>(8.0f + 0.5f - (height - w), 0.0f), 8.0f);
       }
     }
   }

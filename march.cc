@@ -621,9 +621,20 @@ void collideBoxEther(int dims[3], float *potential, int shift[3], float *positio
   }
 }
 
-void marchingCubes2(int dims[3], float *potential, float shift[3], float scale[3], float *positions, float *barycentrics, unsigned int &positionIndex, unsigned int &barycentricIndex) {
+inline void setSkyLights(const std::array<float, 3> &v, unsigned char *heightfield, unsigned char *skyLights, unsigned int skyLightIndex, int dims[3]) {
+  int x = (int)std::floor(v[0]);
+  int y = (int)std::floor(v[1]);
+  int z = (int)std::floor(v[2]);
+  int index = x +
+    (z * dims[0]) +
+    (y * dims[0] * dims[1]);
+  skyLights[skyLightIndex] = heightfield[index];
+}
+
+void marchingCubes2(int dims[3], float *potential, unsigned char *heightfield, float shift[3], float scale[3], float *positions, float *barycentrics, unsigned int &positionIndex, unsigned int &barycentricIndex, unsigned char *skyLights) {
   positionIndex = 0;
   barycentricIndex = 0;
+  unsigned int skyLightIndex = 0;
 
   int n = 0;
   float grid[8] = {0};
@@ -663,11 +674,29 @@ void marchingCubes2(int dims[3], float *potential, float shift[3], float scale[3
 	  float t = a / d;
 	  std::array<float, 3> &v = edges[i];
 	  for(int j=0; j<3; ++j) {
-	    v[j] = (((x[j] + p0[j]) + t * (p1[j] - p0[j])) + shift[j]) * scale[j];
+	    v[j] = (x[j] + p0[j]) + t * (p1[j] - p0[j]);
 	  }
 	}
 	//Add faces
 	int *f = triTable[cube_index];
+	for(int i=0;f[i]!=-1;i+=3) {
+	  std::array<float, 3> &a = edges[f[i]];
+	  std::array<float, 3> &b = edges[f[i+2]];
+	  std::array<float, 3> &c = edges[f[i+1]];
+
+	  setSkyLights(a, heightfield, skyLights, skyLightIndex, dims);
+	  skyLightIndex++;
+	  setSkyLights(b, heightfield, skyLights, skyLightIndex, dims);
+	  skyLightIndex++;
+	  setSkyLights(c, heightfield, skyLights, skyLightIndex, dims);
+	  skyLightIndex++;
+	}
+	for (int i = 0; i < 12; i++) {
+	  std::array<float, 3> &v = edges[i];
+	  for(int j=0; j<3; ++j) {
+	    v[j] = (v[j] + shift[j]) * scale[j];
+	  }
+	}
 	for(int i=0;f[i]!=-1;i+=3) {
 	  std::array<float, 3> &a = edges[f[i]];
 	  std::array<float, 3> &b = edges[f[i+2]];

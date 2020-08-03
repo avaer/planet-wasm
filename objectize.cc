@@ -97,8 +97,8 @@ EMSCRIPTEN_KEEPALIVE void cllideBoxEther(int dims[3], float *potential, int shif
   result[2] = (unsigned int)ceiled;
 }
 
-EMSCRIPTEN_KEEPALIVE void doMarchingCubes2(int dims[3], float *potential, float shift[3], float scale[3], float *positions, float *barycentrics, unsigned int *positionIndex, unsigned int *barycentricIndex) {
-  marchingCubes2(dims, potential, shift, scale, positions, barycentrics, *positionIndex, *barycentricIndex);
+EMSCRIPTEN_KEEPALIVE void doMarchingCubes2(int dims[3], float *potential, unsigned char *heightfield, float shift[3], float scale[3], float *positions, float *barycentrics, unsigned int *positionIndex, unsigned int *barycentricIndex, unsigned char *skyLights) {
+  marchingCubes2(dims, potential, heightfield, shift, scale, positions, barycentrics, *positionIndex, *barycentricIndex, skyLights);
 }
 
 /* EMSCRIPTEN_KEEPALIVE void doNoise2(int seed, double frequency, int octaves, int dims[3], float shifts[3], float offset, float *potential) {
@@ -109,8 +109,8 @@ EMSCRIPTEN_KEEPALIVE float doGetHeight(int seed, float ax, float ay, float az, f
   return getHeight(seed, ax, ay, az, baseHeight, freqs, octaves, scales, uvs, amps, limits);
 }
 
-EMSCRIPTEN_KEEPALIVE void doNoise3(int seed, float baseHeight, float *freqs, int *octaves, float *scales, float *uvs, float *amps, int dims[3], float shifts[3], int limits[3], float wormRate, float wormRadiusBase, float wormRadiusRate, float objectsRate, float offset, float *potential, float *objectPositions, float *objectQuaternions, unsigned int *objectTypes, unsigned int *numObjects) {
-  noise3(seed, baseHeight, freqs, octaves, scales, uvs, amps, dims, shifts, limits, wormRate, wormRadiusBase, wormRadiusRate, objectsRate, offset, potential, objectPositions, objectQuaternions, objectTypes, *numObjects);
+EMSCRIPTEN_KEEPALIVE void doNoise3(int seed, float baseHeight, float *freqs, int *octaves, float *scales, float *uvs, float *amps, int dims[3], float shifts[3], int limits[3], float wormRate, float wormRadiusBase, float wormRadiusRate, float objectsRate, float offset, float *potential, unsigned char *heightfield, float *objectPositions, float *objectQuaternions, unsigned int *objectTypes, unsigned int *numObjects) {
+  noise3(seed, baseHeight, freqs, octaves, scales, uvs, amps, dims, shifts, limits, wormRate, wormRadiusBase, wormRadiusRate, objectsRate, offset, potential, heightfield, objectPositions, objectQuaternions, objectTypes, *numObjects);
 }
 
 EMSCRIPTEN_KEEPALIVE void doFree(void *ptr) {
