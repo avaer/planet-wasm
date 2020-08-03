@@ -621,20 +621,20 @@ void collideBoxEther(int dims[3], float *potential, int shift[3], float *positio
   }
 }
 
-inline void setSkyLights(const std::array<float, 3> &v, unsigned char *heightfield, unsigned char *skyLights, unsigned int skyLightIndex, int dims[3]) {
+inline void setLights(const std::array<float, 3> &v, unsigned char *field, unsigned char *lights, unsigned int lightIndex, int dims[3]) {
   int x = (int)std::floor(v[0]);
   int y = (int)std::floor(v[1]);
   int z = (int)std::floor(v[2]);
   int index = x +
     (z * dims[0]) +
     (y * dims[0] * dims[1]);
-  skyLights[skyLightIndex] = heightfield[index];
+  lights[lightIndex] = field[index];
 }
 
-void marchingCubes2(int dims[3], float *potential, unsigned char *heightfield, float shift[3], float scale[3], float *positions, float *barycentrics, unsigned int &positionIndex, unsigned int &barycentricIndex, unsigned char *skyLights) {
+void marchingCubes2(int dims[3], float *potential, unsigned char *heightfield, unsigned char *lightfield, float shift[3], float scale[3], float *positions, float *barycentrics, unsigned int &positionIndex, unsigned int &barycentricIndex, unsigned char *skyLights, unsigned char *torchLights) {
   positionIndex = 0;
   barycentricIndex = 0;
-  unsigned int skyLightIndex = 0;
+  unsigned int lightIndex = 0;
 
   int n = 0;
   float grid[8] = {0};
@@ -684,12 +684,15 @@ void marchingCubes2(int dims[3], float *potential, unsigned char *heightfield, f
 	  std::array<float, 3> &b = edges[f[i+2]];
 	  std::array<float, 3> &c = edges[f[i+1]];
 
-	  setSkyLights(a, heightfield, skyLights, skyLightIndex, dims);
-	  skyLightIndex++;
-	  setSkyLights(b, heightfield, skyLights, skyLightIndex, dims);
-	  skyLightIndex++;
-	  setSkyLights(c, heightfield, skyLights, skyLightIndex, dims);
-	  skyLightIndex++;
+	  setLights(a, heightfield, skyLights, lightIndex, dims);
+	  setLights(a, lightfield, torchLights, lightIndex, dims);
+	  lightIndex++;
+	  setLights(b, heightfield, skyLights, lightIndex, dims);
+	  setLights(b, lightfield, torchLights, lightIndex, dims);
+	  lightIndex++;
+	  setLights(c, heightfield, skyLights, lightIndex, dims);
+	  setLights(c, lightfield, torchLights, lightIndex, dims);
+	  lightIndex++;
 	}
 	for (int i = 0; i < 12; i++) {
 	  std::array<float, 3> &v = edges[i];
