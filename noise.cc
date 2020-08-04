@@ -8,6 +8,14 @@
 #include "biomes.h"
 
 #define PI M_PI
+constexpr int FILL_BOTTOM = 2<<0;
+constexpr int FILL_TOP = 2<<1;
+constexpr int FILL_LEFT = 2<<2;
+constexpr int FILL_RIGHT = 2<<3;
+constexpr int FILL_FRONT = 2<<4;
+constexpr int FILL_BACK = 2<<5;
+constexpr int FILL_CENTER = 2<<6;
+constexpr int FILL_ALL = FILL_BOTTOM|FILL_TOP|FILL_LEFT|FILL_RIGHT|FILL_FRONT|FILL_BACK|FILL_CENTER;
 
 Noise::Noise(int s, double frequency, int octaves) : fastNoise(s) {
   fastNoise.SetFrequency(frequency);
@@ -17,6 +25,7 @@ Noise::Noise(const Noise &noise) : fastNoise(noise.fastNoise) {}
 Noise::~Noise() {}
 Noise &Noise::operator=(const Noise &noise) {
   fastNoise = noise.fastNoise;
+  return *this;
 }
 double Noise::in2D(float x, float y) {
   return (1.0 + fastNoise.GetSimplexFractal(x, y)) / 2.0;
@@ -93,7 +102,8 @@ inline float getBiomeHeight(unsigned char b, float x, float z, Noise &elevationN
   // }
 }
 
-void _fillOblateSpheroid(float centerX, float centerY, float centerZ, int minX, int minY, int minZ, int maxX, int maxY, int maxZ, float radius, int *dimsP1, float *ether) {
+template <typename T>
+inline void _fillOblateSpheroid(float centerX, float centerY, float centerZ, int minX, int minY, int minZ, int maxX, int maxY, int maxZ, float radius, int *dimsP1, T *ether, std::function<T(T, float)> fn) {
   const int radiusCeil = (int)std::ceil(radius);
   for (int z = -radiusCeil; z <= radiusCeil; z++) {
     const float lz = centerZ + z;
@@ -106,12 +116,10 @@ void _fillOblateSpheroid(float centerX, float centerY, float centerZ, int minX, 
             if (ly >= minY && ly < maxY) {
               const float distance = x*x + 2 * y*y + z*z;
               if (distance < radius*radius) {
-                // const int index = getEtherIndex(std::floor(lx - minX), std::floor(ly), std::floor(lz - minZ));
                 const int index = std::floor(lx - minX) +
                   (std::floor(lz - minZ) * dimsP1[0]) +
                   (std::floor(ly - minY) * dimsP1[0] * dimsP1[1]);
-                const float distance2 = std::sqrt(distance);
-                ether[index] -= 1 + ((radius - distance2) / radius);
+                ether[index] = fn(ether[index], distance);
               }
             }
           }
@@ -190,7 +198,7 @@ float getHeight(int seed, float ax, float ay, float az, float baseHeight, float 
   return height;
 }
 
-void noise3(int seed, float baseHeight, float *freqs, int *octaves, float *scales, float *uvs, float *amps, int dims[3], float shifts[3], int limits[3], float wormRate, float wormRadiusBase, float wormRadiusRate, float objectsRate, float offset, float *potential, unsigned char *heightfield, float *objectPositions, float *objectQuaternions, unsigned int *objectTypes, unsigned int &numObjects) {
+void noise3(int seed, float baseHeight, float *freqs, int *octaves, float *scales, float *uvs, float *amps, int dims[3], float shifts[3], int limits[3], float wormRate, float wormRadiusBase, float wormRadiusRate, float objectsRate, float offset, float *potential, unsigned char *heightfield, float *objectPositions, float *objectQuaternions, unsigned int *objectTypes, unsigned int &numObjects, unsigned int maxNumObjects) {
   memset(potential, 0, dims[0]*dims[1]*dims[2]*sizeof(float));
   memset(heightfield, 0, dims[0]*dims[1]*dims[2]*sizeof(unsigned char));
   AxisElevationNoise axisElevationNoise(seed, freqs, octaves);
@@ -225,14 +233,21 @@ void noise3(int seed, float baseHeight, float *freqs, int *octaves, float *scale
     dims[1]+1,
     dims[2]+1,
   };
+  int dimsP3[3] = {
+    dims[0]+3,
+    dims[1]+3,
+    dims[2]+3,
+  };
 
-  for (int x = 0; x < dimsP1[0]; x++) {
+  std::vector<unsigned char> fills(dimsP1[0]*dimsP1[1]*dimsP1[2]);
+
+  for (int x = 0; x < dimsP3[0]; x++) {
     float ax = shifts[0] + x;
     float cx = ax - (float)(limits[0])/2.0f;
-    for (int z = 0; z < dimsP1[2]; z++) {
+    for (int z = 0; z < dimsP3[2]; z++) {
       float az = shifts[2] + z;
       float cz = az - (float)(limits[2])/2.0f;
-      for (int y = 0; y < dimsP1[1]; y++) {
+      for (int y = 0; y < dimsP3[1]; y++) {
         float ay = shifts[1] + y;
         float cy = ay - (float)(limits[1])/2.0f;
 
@@ -280,11 +295,19 @@ void noise3(int seed, float baseHeight, float *freqs, int *octaves, float *scale
           (*elevationNoise)[0].in2D((u + uvs[0]) * scales[0], (v + uvs[0]) * scales[0]) * amps[0] +
           (*elevationNoise)[1].in2D((u + uvs[1]) * scales[1], (v + uvs[1]) * scales[1]) * amps[1] +
           (*elevationNoise)[2].in2D((u + uvs[2]) * scales[2], (v + uvs[2]) * scales[2]) * amps[2];
-        int index = x +
-          (z * dimsP1[0]) +
-          (y * dimsP1[0] * dimsP1[1]);
-        potential[index] = (w < height) ? -offset : offset;
-        heightfield[index] = (unsigned char)std::min<float>(std::max<float>(8.0f + 0.5f - (height - w), 0.0f), 8.0f);
+        if (x < dimsP1[0] && y < dimsP1[1] && z < dimsP1[2]) {
+          int index = x +
+            (z * dimsP1[0]) +
+            (y * dimsP1[0] * dimsP1[1]);
+          potential[index] = (w < height) ? -offset : offset;
+          heightfield[index] = (unsigned char)std::min<float>(std::max<float>(8.0f + 0.5f - (height - w), 0.0f), 8.0f);
+        }
+        if (w < height) {
+          int fillIndex = x +
+            (z * dimsP3[0]) +
+            (y * dimsP3[0] * dimsP3[1]);
+          fills[fillIndex] = FILL_CENTER;
+        }
       }
     }
   }
@@ -346,7 +369,12 @@ void noise3(int seed, float baseHeight, float *freqs, int *octaves, float *scale
                 const float centerPosZ = cavePosZ + (caveCenterNoiseZ.in2D(nx, ny) * 4 - 2) * 0.2;
 
                 const float radius = wormRadiusBase + wormRadiusRate * caveRadius * sin(len * PI / caveLength);
-                _fillOblateSpheroid(centerPosX, centerPosY, centerPosZ, ox * dims[0], oy * dims[1], oz * dims[2], (ox + 1) * dims[0] + 1, (oy + 1) * dims[1] + 1, (oz + 1) * dims[2] + 1, radius, dimsP1, potential);
+                _fillOblateSpheroid<float>(centerPosX, centerPosY, centerPosZ, ox * dims[0], oy * dims[1], oz * dims[2], (ox + 1) * dims[0] + 1, (oy + 1) * dims[1] + 1, (oz + 1) * dims[2] + 1, radius, dimsP1, potential, [&](float oldVal, float distance) -> float {
+                  return oldVal - (1 + ((radius - std::sqrt(distance)) / radius));
+                });
+                _fillOblateSpheroid<unsigned char>(centerPosX, centerPosY, centerPosZ, ox * dims[0], oy * dims[1], oz * dims[2], (ox + 1) * dims[0] + 3, (oy + 1) * dims[1] + 3, (oz + 1) * dims[2] + 3, radius, dimsP3, fills.data(), [&](unsigned char oldVal, float distance) -> float {
+                  return 0;
+                });
               }
             }
           }
@@ -355,40 +383,165 @@ void noise3(int seed, float baseHeight, float *freqs, int *octaves, float *scale
     }
   }
 
-  /* if (shifts[1] < 1) {
-    const int y = 0;
-    for (int x = 0; x < dimsP1[0]; x++) {
-      for (int z = 0; z < dimsP1[2]; z++) {
-        int index = (x) +
-          (z * dimsP1[0]) +
-          (y * dimsP1[0] * dimsP1[1]);
-        potential[index] = -offset;
+  for (int x = 0; x < dims[0]; x++) {
+    for (int z = 0; z < dims[2]; z++) {
+      for (int y = 0; y < dims[1]; y++) {
+        int fillIndex = x +
+          (z * dimsP3[0]) +
+          (y * dimsP3[0] * dimsP3[1]);
+        if (!(fills[fillIndex]&FILL_CENTER)) {
+          bool topEmpty = true;
+          {
+            int dy = 2;
+            int ay = y + dy;
+            for (int dx = 0; dx < 3; dx++) {
+              int ax = x + dx;
+              for (int dz = 0; dz < 3; dz++) {
+                int az = z + dz;
+                int fillIndex = x +
+                  (z * dimsP3[0]) +
+                  (y * dimsP3[0] * dimsP3[1]);
+                if (fills[fillIndex]&FILL_CENTER) {
+                  topEmpty = false;
+                }
+              }
+            }
+          }
+          if (topEmpty) {
+            fills[fillIndex] |= FILL_TOP;
+          }
+          bool bottomEmpty = true;
+          {
+            int dy = 0;
+            int ay = y + dy;
+            for (int dx = 0; dx < 3; dx++) {
+              int ax = x + dx;
+              for (int dz = 0; dz < 3; dz++) {
+                int az = z + dz;
+                int fillIndex = x +
+                  (z * dimsP3[0]) +
+                  (y * dimsP3[0] * dimsP3[1]);
+                if (fills[fillIndex]&FILL_CENTER) {
+                  bottomEmpty = false;
+                }
+              }
+            }
+          }
+          if (bottomEmpty) {
+            fills[fillIndex] |= FILL_BOTTOM;
+          }
+          bool leftEmpty = true;
+          {
+            int dx = 0;
+            int ax = x + dx;
+            for (int dy = 0; dy < 3; dy++) {
+              int ay = y + dy;
+              for (int dz = 0; dz < 3; dz++) {
+                int az = z + dz;
+                int fillIndex = x +
+                  (z * dimsP3[0]) +
+                  (y * dimsP3[0] * dimsP3[1]);
+                if (fills[fillIndex]&FILL_CENTER) {
+                  leftEmpty = false;
+                }
+              }
+            }
+          }
+          if (leftEmpty) {
+            fills[fillIndex] |= FILL_LEFT;
+          }
+          bool rightEmpty = true;
+          {
+            int dx = 2;
+            int ax = x + dx;
+            for (int dy = 0; dy < 3; dy++) {
+              int ay = y + dy;
+              for (int dz = 0; dz < 3; dz++) {
+                int az = z + dz;
+                int fillIndex = x +
+                  (z * dimsP3[0]) +
+                  (y * dimsP3[0] * dimsP3[1]);
+                if (fills[fillIndex]&FILL_CENTER) {
+                  rightEmpty = false;
+                }
+              }
+            }
+          }
+          if (rightEmpty) {
+            fills[fillIndex] |= FILL_RIGHT;
+          }
+          bool frontEmpty = true;
+          {
+            int dz = 2;
+            int az = z + dz;
+            for (int dx = 0; dx < 3; dx++) {
+              int ax = x + dx;
+              for (int dz = 0; dz < 3; dz++) {
+                int az = z + dz;
+                int fillIndex = x +
+                  (z * dimsP3[0]) +
+                  (y * dimsP3[0] * dimsP3[1]);
+                if (fills[fillIndex]&FILL_CENTER) {
+                  frontEmpty = false;
+                }
+              }
+            }
+          }
+          if (frontEmpty) {
+            fills[fillIndex] |= FILL_FRONT;
+          }
+          bool backEmpty = true;
+          {
+            int dz = 0;
+            int az = z + dz;
+            for (int dx = 0; dx < 3; dx++) {
+              int ax = x + dx;
+              for (int dy = 0; dy < 3; dy++) {
+                int ay = y + dy;
+                int fillIndex = x +
+                  (z * dimsP3[0]) +
+                  (y * dimsP3[0] * dimsP3[1]);
+                if (fills[fillIndex]&FILL_CENTER) {
+                  backEmpty = false;
+                }
+              }
+            }
+          }
+          if (backEmpty) {
+            fills[fillIndex] |= FILL_BACK;
+          }
+        }
       }
     }
-  } */
+  }
 
-  float ax = shifts[0];
-  float cx = ax - (float)(limits[0])/2.0f;
-  float ay = shifts[1];
-  float cy = ay - (float)(limits[1])/2.0f;
-  float az = shifts[2];
-  float cz = az - (float)(limits[2])/2.0f;
-  if (shifts[1] == limits[1] - dims[1]) {
-    numObjects = (unsigned int)std::floor(numObjectsNoise.in3D(cx, cy, cz) * objectsRate);
-    for (unsigned int i = 0; i < numObjects; i++) {
-      float x = ax + objectsNoiseX.in3D(cx + i * 1000.0f, cy + i * 1000.0f, cz + i * 1000.0f) * (float)dims[0];
-      float y = ay + (float)dims[1] / 2.0f - 1.0f;
-      float z = az + objectsNoiseZ.in3D(cx + i * 1000.0f, cy + i * 1000.0f, cz + i * 1000.0f) * (float)dims[2];
-      objectPositions[i*3] = x;
-      objectPositions[i*3+1] = y;
-      objectPositions[i*3+2] = z;
-      objectQuaternions[i*4] = 0;
-      objectQuaternions[i*4+1] = 0;
-      objectQuaternions[i*4+2] = 0;
-      objectQuaternions[i*4+3] = 1;
-      objectTypes[i] = (unsigned int)std::floor(objectsTypeNoise.in3D(cx + i * 1000.0f, cy + i * 1000.0f, cz + i * 1000.0f) * (float)0xFF);
+  unsigned int &i = numObjects;
+  i = 0;
+  for (int x = 0; x < dims[0] && i < maxNumObjects; x++) {
+    float ax = shifts[0] + x;
+    float cx = ax - (float)(limits[0])/2.0f;
+    for (int z = 0; z < dims[2] && i < maxNumObjects; z++) {
+      float az = shifts[2] + z;
+      float cz = az - (float)(limits[2])/2.0f;
+      for (int y = 0; y < dims[1] && i < maxNumObjects; y++) {
+        float ay = shifts[1] + y;
+        float cy = ay - (float)(limits[1])/2.0f;
+
+        int fillIndex = x +
+          (z * dimsP3[0]) +
+          (y * dimsP3[0] * dimsP3[1]);
+        if (!(fills[fillIndex]&FILL_CENTER) && numObjectsNoise.in3D(cx, cy, cz) < 0.1) {
+          objectPositions[i*3] = ax;
+          objectPositions[i*3+1] = ay;
+          objectPositions[i*3+2] = az;
+          objectQuaternions[i*4] = 0;
+          objectQuaternions[i*4+1] = 0;
+          objectQuaternions[i*4+2] = 0;
+          objectQuaternions[i*4+3] = 1;
+          objectTypes[i] = (unsigned int)std::floor(objectsTypeNoise.in3D(cx + i * 1000.0f, cy + i * 1000.0f, cz + i * 1000.0f) * (float)0xFF);
+          i++;
+        }
+      }
     }
-  } else {
-    numObjects = 0;
   }
 }
