@@ -514,7 +514,6 @@ void noise3(int seed, float baseHeight, float *freqs, int *octaves, float *scale
           ((z+1) * dimsP3[0]) +
           ((y+1) * dimsP3[0] * dimsP3[1]);
         if (!(fills[fillIndexUpRightForward]&FILL_LOCAL) && !bottomEmpty) {
-          // std::cout << "fill base " << (x+1) << " " << (y+1) << " " << (z+1) << " " << fillIndexUpRightForward << std::endl;
           fills[fillIndexUpRightForward] |= FILL_BASE;
         }
       }
@@ -547,10 +546,7 @@ void noise3(int seed, float baseHeight, float *freqs, int *octaves, float *scale
             objectQuaternions[i*4+3] = 1;
             objectTypes[i] = (unsigned int)std::floor(objectsTypeNoise.in3D(cx + i * 1000.0f, cy + i * 1000.0f, cz + i * 1000.0f) * (float)0xFF);
             i++;
-            // std::cout << "base yes" << std::endl;
-          } /* else {
-            std::cout << "no base " << cx << " " << cy << " " << cz << " " << fillIndex << " " << numObjectsNoise.in3D(cx, cy, cz) << std::endl;
-          } */
+          }
         }
       }
     }
