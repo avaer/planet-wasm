@@ -8,14 +8,14 @@
 #include "biomes.h"
 
 #define PI M_PI
-constexpr int FILL_BOTTOM = 2<<0;
-constexpr int FILL_TOP = 2<<1;
-constexpr int FILL_LEFT = 2<<2;
-constexpr int FILL_RIGHT = 2<<3;
-constexpr int FILL_FRONT = 2<<4;
-constexpr int FILL_BACK = 2<<5;
-constexpr int FILL_CENTER = 2<<6;
-constexpr int FILL_ALL = FILL_BOTTOM|FILL_TOP|FILL_LEFT|FILL_RIGHT|FILL_FRONT|FILL_BACK|FILL_CENTER;
+constexpr int FILL_BOTTOM = 1<<0;
+constexpr int FILL_TOP = 1<<1;
+constexpr int FILL_LEFT = 1<<2;
+constexpr int FILL_RIGHT = 1<<3;
+constexpr int FILL_FRONT = 1<<4;
+constexpr int FILL_BACK = 1<<5;
+constexpr int FILL_LOCAL = 1<<6;
+constexpr int FILL_BASE = 1<<7;
 
 Noise::Noise(int s, double frequency, int octaves) : fastNoise(s) {
   fastNoise.SetFrequency(frequency);
@@ -306,7 +306,7 @@ void noise3(int seed, float baseHeight, float *freqs, int *octaves, float *scale
           int fillIndex = x +
             (z * dimsP3[0]) +
             (y * dimsP3[0] * dimsP3[1]);
-          fills[fillIndex] = FILL_CENTER;
+          fills[fillIndex] = FILL_LOCAL;
         }
       }
     }
@@ -333,7 +333,7 @@ void noise3(int seed, float baseHeight, float *freqs, int *octaves, float *scale
           const int ny = aoy * dims[1] + i * 1000;
           const int nz = aoz * dims[2] + i * 1000;
           const float nestX = (float)(aox * dims[0]) + nestNoiseX.in2D(ny, nz) * dims[0];
-          const float nestY = (float)(aoy * dims[1]) + nestNoiseY.in2D(nx, nz) * dims[0];
+          const float nestY = (float)(aoy * dims[1]) + nestNoiseY.in2D(nx, nz) * dims[1];
           const float nestZ = (float)(aoz * dims[2]) + nestNoiseZ.in2D(nx, ny) * dims[2];
 
           const int numWorms = (int)std::floor(numWormsNoise.in3D(nx, ny, nz) * wormRate);
@@ -389,127 +389,133 @@ void noise3(int seed, float baseHeight, float *freqs, int *octaves, float *scale
         int fillIndex = x +
           (z * dimsP3[0]) +
           (y * dimsP3[0] * dimsP3[1]);
-        if (!(fills[fillIndex]&FILL_CENTER)) {
-          bool topEmpty = true;
-          {
-            int dy = 2;
-            int ay = y + dy;
-            for (int dx = 0; dx < 3; dx++) {
-              int ax = x + dx;
-              for (int dz = 0; dz < 3; dz++) {
-                int az = z + dz;
-                int fillIndex = x +
-                  (z * dimsP3[0]) +
-                  (y * dimsP3[0] * dimsP3[1]);
-                if (fills[fillIndex]&FILL_CENTER) {
-                  topEmpty = false;
-                }
+        bool topEmpty = true;
+        {
+          int dy = 2;
+          int ay = y + dy;
+          for (int dx = 0; dx < 3; dx++) {
+            int ax = x + dx;
+            for (int dz = 0; dz < 3; dz++) {
+              int az = z + dz;
+              int fillIndex = x +
+                (z * dimsP3[0]) +
+                (y * dimsP3[0] * dimsP3[1]);
+              if (fills[fillIndex]&FILL_LOCAL) {
+                topEmpty = false;
               }
             }
           }
-          if (topEmpty) {
-            fills[fillIndex] |= FILL_TOP;
-          }
-          bool bottomEmpty = true;
-          {
-            int dy = 0;
-            int ay = y + dy;
-            for (int dx = 0; dx < 3; dx++) {
-              int ax = x + dx;
-              for (int dz = 0; dz < 3; dz++) {
-                int az = z + dz;
-                int fillIndex = x +
-                  (z * dimsP3[0]) +
-                  (y * dimsP3[0] * dimsP3[1]);
-                if (fills[fillIndex]&FILL_CENTER) {
-                  bottomEmpty = false;
-                }
+        }
+        if (!topEmpty) {
+          fills[fillIndex] |= FILL_TOP;
+        }
+        bool bottomEmpty = true;
+        {
+          int dy = 0;
+          int ay = y + dy;
+          for (int dx = 0; dx < 3; dx++) {
+            int ax = x + dx;
+            for (int dz = 0; dz < 3; dz++) {
+              int az = z + dz;
+              int fillIndex = x +
+                (z * dimsP3[0]) +
+                (y * dimsP3[0] * dimsP3[1]);
+              if (fills[fillIndex]&FILL_LOCAL) {
+                bottomEmpty = false;
               }
             }
           }
-          if (bottomEmpty) {
-            fills[fillIndex] |= FILL_BOTTOM;
+        }
+        if (!bottomEmpty) {
+          fills[fillIndex] |= FILL_BOTTOM;
+        }
+        bool leftEmpty = true;
+        {
+          int dx = 0;
+          int ax = x + dx;
+          for (int dy = 0; dy < 3; dy++) {
+            int ay = y + dy;
+            for (int dz = 0; dz < 3; dz++) {
+              int az = z + dz;
+              int fillIndex = x +
+                (z * dimsP3[0]) +
+                (y * dimsP3[0] * dimsP3[1]);
+              if (fills[fillIndex]&FILL_LOCAL) {
+                leftEmpty = false;
+              }
+            }
           }
-          bool leftEmpty = true;
-          {
-            int dx = 0;
+        }
+        if (!leftEmpty) {
+          fills[fillIndex] |= FILL_LEFT;
+        }
+        bool rightEmpty = true;
+        {
+          int dx = 2;
+          int ax = x + dx;
+          for (int dy = 0; dy < 3; dy++) {
+            int ay = y + dy;
+            for (int dz = 0; dz < 3; dz++) {
+              int az = z + dz;
+              int fillIndex = x +
+                (z * dimsP3[0]) +
+                (y * dimsP3[0] * dimsP3[1]);
+              if (fills[fillIndex]&FILL_LOCAL) {
+                rightEmpty = false;
+              }
+            }
+          }
+        }
+        if (!rightEmpty) {
+          fills[fillIndex] |= FILL_RIGHT;
+        }
+        bool frontEmpty = true;
+        {
+          int dz = 2;
+          int az = z + dz;
+          for (int dx = 0; dx < 3; dx++) {
+            int ax = x + dx;
+            for (int dz = 0; dz < 3; dz++) {
+              int az = z + dz;
+              int fillIndex = x +
+                (z * dimsP3[0]) +
+                (y * dimsP3[0] * dimsP3[1]);
+              if (fills[fillIndex]&FILL_LOCAL) {
+                frontEmpty = false;
+              }
+            }
+          }
+        }
+        if (!frontEmpty) {
+          fills[fillIndex] |= FILL_FRONT;
+        }
+        bool backEmpty = true;
+        {
+          int dz = 0;
+          int az = z + dz;
+          for (int dx = 0; dx < 3; dx++) {
             int ax = x + dx;
             for (int dy = 0; dy < 3; dy++) {
               int ay = y + dy;
-              for (int dz = 0; dz < 3; dz++) {
-                int az = z + dz;
-                int fillIndex = x +
-                  (z * dimsP3[0]) +
-                  (y * dimsP3[0] * dimsP3[1]);
-                if (fills[fillIndex]&FILL_CENTER) {
-                  leftEmpty = false;
-                }
+              int fillIndex = x +
+                (z * dimsP3[0]) +
+                (y * dimsP3[0] * dimsP3[1]);
+              if (fills[fillIndex]&FILL_LOCAL) {
+                backEmpty = false;
               }
             }
           }
-          if (leftEmpty) {
-            fills[fillIndex] |= FILL_LEFT;
-          }
-          bool rightEmpty = true;
-          {
-            int dx = 2;
-            int ax = x + dx;
-            for (int dy = 0; dy < 3; dy++) {
-              int ay = y + dy;
-              for (int dz = 0; dz < 3; dz++) {
-                int az = z + dz;
-                int fillIndex = x +
-                  (z * dimsP3[0]) +
-                  (y * dimsP3[0] * dimsP3[1]);
-                if (fills[fillIndex]&FILL_CENTER) {
-                  rightEmpty = false;
-                }
-              }
-            }
-          }
-          if (rightEmpty) {
-            fills[fillIndex] |= FILL_RIGHT;
-          }
-          bool frontEmpty = true;
-          {
-            int dz = 2;
-            int az = z + dz;
-            for (int dx = 0; dx < 3; dx++) {
-              int ax = x + dx;
-              for (int dz = 0; dz < 3; dz++) {
-                int az = z + dz;
-                int fillIndex = x +
-                  (z * dimsP3[0]) +
-                  (y * dimsP3[0] * dimsP3[1]);
-                if (fills[fillIndex]&FILL_CENTER) {
-                  frontEmpty = false;
-                }
-              }
-            }
-          }
-          if (frontEmpty) {
-            fills[fillIndex] |= FILL_FRONT;
-          }
-          bool backEmpty = true;
-          {
-            int dz = 0;
-            int az = z + dz;
-            for (int dx = 0; dx < 3; dx++) {
-              int ax = x + dx;
-              for (int dy = 0; dy < 3; dy++) {
-                int ay = y + dy;
-                int fillIndex = x +
-                  (z * dimsP3[0]) +
-                  (y * dimsP3[0] * dimsP3[1]);
-                if (fills[fillIndex]&FILL_CENTER) {
-                  backEmpty = false;
-                }
-              }
-            }
-          }
-          if (backEmpty) {
-            fills[fillIndex] |= FILL_BACK;
-          }
+        }
+        if (!backEmpty) {
+          fills[fillIndex] |= FILL_BACK;
+        }
+
+        int fillIndexUpRightForward = (x+1) +
+          ((z+1) * dimsP3[0]) +
+          ((y+1) * dimsP3[0] * dimsP3[1]);
+        if (!(fills[fillIndexUpRightForward]&FILL_LOCAL) && !bottomEmpty) {
+          // std::cout << "fill base " << (x+1) << " " << (y+1) << " " << (z+1) << " " << fillIndexUpRightForward << std::endl;
+          fills[fillIndexUpRightForward] |= FILL_BASE;
         }
       }
     }
@@ -530,16 +536,21 @@ void noise3(int seed, float baseHeight, float *freqs, int *octaves, float *scale
         int fillIndex = x +
           (z * dimsP3[0]) +
           (y * dimsP3[0] * dimsP3[1]);
-        if (!(fills[fillIndex]&FILL_CENTER) && numObjectsNoise.in3D(cx, cy, cz) < 0.1) {
-          objectPositions[i*3] = ax;
-          objectPositions[i*3+1] = ay;
-          objectPositions[i*3+2] = az;
-          objectQuaternions[i*4] = 0;
-          objectQuaternions[i*4+1] = 0;
-          objectQuaternions[i*4+2] = 0;
-          objectQuaternions[i*4+3] = 1;
-          objectTypes[i] = (unsigned int)std::floor(objectsTypeNoise.in3D(cx + i * 1000.0f, cy + i * 1000.0f, cz + i * 1000.0f) * (float)0xFF);
-          i++;
+        if ((bool)(fills[fillIndex]&FILL_BASE)) {
+          if (numObjectsNoise.in3D(cx, cy, cz) < 0.1) {
+            objectPositions[i*3] = ax;
+            objectPositions[i*3+1] = ay;
+            objectPositions[i*3+2] = az;
+            objectQuaternions[i*4] = 0;
+            objectQuaternions[i*4+1] = 0;
+            objectQuaternions[i*4+2] = 0;
+            objectQuaternions[i*4+3] = 1;
+            objectTypes[i] = (unsigned int)std::floor(objectsTypeNoise.in3D(cx + i * 1000.0f, cy + i * 1000.0f, cz + i * 1000.0f) * (float)0xFF);
+            i++;
+            // std::cout << "base yes" << std::endl;
+          } /* else {
+            std::cout << "no base " << cx << " " << cy << " " << cz << " " << fillIndex << " " << numObjectsNoise.in3D(cx, cy, cz) << std::endl;
+          } */
         }
       }
     }
