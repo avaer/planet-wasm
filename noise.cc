@@ -49,7 +49,7 @@ double Noise::in3D(float x, float y, float z) {
   }
 } */
 
-inline unsigned char getBiome(float x, float z, Noise &oceanNoise, Noise &riverNoise, Noise &temperatureNoise, Noise &humidityNoise) {
+inline unsigned char getBiome(float x, float z, Noise &temperatureNoise, Noise &humidityNoise, Noise &oceanNoise, Noise &riverNoise) {
   // const std::pair<int, int> key(x, z);
   // std::unordered_map<std::pair<int, int>, unsigned char>::iterator entryIter = biomeCache.find(key);
 
@@ -93,10 +93,10 @@ inline float getBiomeHeight(unsigned char b, float x, float z, Noise &elevationN
     // float &biomeHeight = biomeHeightCache[key];
 
     const Biome &biome = BIOMES[b];
-    float biomeHeight = std::min<float>(biome.baseHeight +
+    float biomeHeight = biome.baseHeight - 64.0f +
       elevationNoise1.in2D(x * biome.amps[0][0], z * biome.amps[0][0]) * biome.amps[0][1] +
       elevationNoise2.in2D(x * biome.amps[1][0], z * biome.amps[1][0]) * biome.amps[1][1] +
-      elevationNoise3.in2D(x * biome.amps[2][0], z * biome.amps[2][0]) * biome.amps[2][1], 128 - 0.1);
+      elevationNoise3.in2D(x * biome.amps[2][0], z * biome.amps[2][0]) * biome.amps[2][1];
     return biomeHeight;
   // }
 }
@@ -128,79 +128,87 @@ inline void _fillOblateSpheroid(float centerX, float centerY, float centerZ, int
   }
 }
 
-class AxisElevationNoise {
+constexpr float thFreq = 0.001;
+constexpr int thOctaves = 4;
+constexpr float elevationFreq = 2;
+constexpr int elevationOctaves = 1;
+class TemperatureHumidityNoise {
 public:
-  AxisElevationNoise(int &seed, float *freqs, int *octaves) {
+  TemperatureHumidityNoise(int &seed) {
     noises.reserve(6);
     for (int i = 0; i < 6; i++) {
-      noises.push_back(std::array<Noise, 3>{
-        Noise(seed++, freqs[0], octaves[0]),
-        Noise(seed++, freqs[1], octaves[1]),
-        Noise(seed++, freqs[1], octaves[2])
+      noises.push_back(std::array<Noise, 7>{
+        Noise(seed++, thFreq, thOctaves),
+        Noise(seed++, thFreq, thOctaves),
+        Noise(seed++, thFreq, thOctaves),
+        Noise(seed++, thFreq, thOctaves),
+        Noise(seed++, elevationFreq, elevationOctaves),
+        Noise(seed++, elevationFreq, elevationOctaves),
+        Noise(seed++, elevationFreq, elevationOctaves),
       });
     }
   }
-  std::vector<std::array<Noise, 3>> noises;
+  std::vector<std::array<Noise, 7>> noises;
 };
 
-float getHeight(int seed, float ax, float ay, float az, float baseHeight, float *freqs, int *octaves, float *scales, float *uvs, float *amps, int limits[3]) {
+float getHeight(int seed, float ax, float ay, float az, float baseHeight, int limits[3]) {
   float cx = ax - (float)(limits[0])/2.0f;
   float cy = ay - (float)(limits[1])/2.0f;
   float cz = az - (float)(limits[2])/2.0f;
 
-  AxisElevationNoise axisElevationNoise(seed, freqs, octaves);
+  TemperatureHumidityNoise thNoises(seed);
 
-  std::array<Noise, 3> *elevationNoise;
+  std::array<Noise, 7> *thNoise;
   float u, v, w;
   if (std::abs(cx) >= std::abs(cy) && std::abs(cx) >= std::abs(cz)) {
     if (cx >= 0) {
-      elevationNoise = &axisElevationNoise.noises[0];
+      thNoise = &thNoises.noises[0];
       u = az;
       v = ay;
       w = cx;
     } else {
-      elevationNoise = &axisElevationNoise.noises[1];
+      thNoise = &thNoises.noises[1];
       u = az;
       v = ay;
       w = -cx;
     }
   } else if (std::abs(cy) >= std::abs(cx) && std::abs(cy) >= std::abs(cz)) {
     if (cy >= 0) {
-      elevationNoise = &axisElevationNoise.noises[2];
+      thNoise = &thNoises.noises[2];
       u = ax;
       v = az;
       w = cy;
     } else {
-      elevationNoise = &axisElevationNoise.noises[3];
+      thNoise = &thNoises.noises[3];
       u = ax;
       v = az;
       w = -cy;
     }
   } else {
     if (cz >= 0) {
-      elevationNoise = &axisElevationNoise.noises[4];
+      thNoise = &thNoises.noises[4];
       u = ax;
       v = ay;
       w = cz;
     } else {
-      elevationNoise = &axisElevationNoise.noises[5];
+      thNoise = &thNoises.noises[5];
       u = ax;
       v = ay;
       w = -cz;
     }
   }
+  std::array<Noise, 7> &thNoiseRef = *thNoise;
 
-  float height = baseHeight +
-    (*elevationNoise)[0].in2D((u + uvs[0]) * scales[0], (v + uvs[0]) * scales[0]) * amps[0] +
-    (*elevationNoise)[1].in2D((u + uvs[1]) * scales[1], (v + uvs[1]) * scales[1]) * amps[1] +
-    (*elevationNoise)[2].in2D((u + uvs[2]) * scales[2], (v + uvs[2]) * scales[2]) * amps[2];
-  return height;
+  unsigned char biome = getBiome(u, v, thNoiseRef[0], thNoiseRef[1], thNoiseRef[2], thNoiseRef[3]);
+  float biomeHeight = getBiomeHeight(biome, u, v, thNoiseRef[4], thNoiseRef[5], thNoiseRef[6]);
+  return baseHeight + biomeHeight;
 }
 
-void noise3(int seed, float baseHeight, float *freqs, int *octaves, float *scales, float *uvs, float *amps, int dims[3], float shifts[3], int limits[3], float wormRate, float wormRadiusBase, float wormRadiusRate, float objectsRate, float offset, float *potential, unsigned char *heightfield, float *objectPositions, float *objectQuaternions, unsigned int *objectTypes, unsigned int &numObjects, unsigned int maxNumObjects) {
+void noise3(int seed, float baseHeight, int dims[3], float shifts[3], int limits[3], float wormRate, float wormRadiusBase, float wormRadiusRate, float objectsRate, float offset, float *potential, unsigned char *biomes, unsigned char *heightfield, float *objectPositions, float *objectQuaternions, unsigned int *objectTypes, unsigned int &numObjects, unsigned int maxNumObjects) {
   memset(potential, 0, dims[0]*dims[1]*dims[2]*sizeof(float));
+  memset(biomes, 0, dims[0]*dims[1]*dims[2]*sizeof(unsigned char));
   memset(heightfield, 0, dims[0]*dims[1]*dims[2]*sizeof(unsigned char));
-  AxisElevationNoise axisElevationNoise(seed, freqs, octaves);
+  TemperatureHumidityNoise thNoises(seed);
 
   // Noise oceanNoise(seed++, 0.001, 4);
   // Noise riverNoise(seed++, 0.001, 4);
@@ -250,55 +258,56 @@ void noise3(int seed, float baseHeight, float *freqs, int *octaves, float *scale
         float ay = shifts[1] + y;
         float cy = ay - (float)(limits[1])/2.0f;
 
-        std::array<Noise, 3> *elevationNoise;
+        std::array<Noise, 7> *thNoise;
         float u, v, w;
         if (std::abs(cx) >= std::abs(cy) && std::abs(cx) >= std::abs(cz)) {
           if (cx >= 0) {
-            elevationNoise = &axisElevationNoise.noises[0];
+            thNoise = &thNoises.noises[0];
             u = az;
             v = ay;
             w = cx;
           } else {
-            elevationNoise = &axisElevationNoise.noises[1];
+            thNoise = &thNoises.noises[1];
             u = az;
             v = ay;
             w = -cx;
           }
         } else if (std::abs(cy) >= std::abs(cx) && std::abs(cy) >= std::abs(cz)) {
           if (cy >= 0) {
-            elevationNoise = &axisElevationNoise.noises[2];
+            thNoise = &thNoises.noises[2];
             u = ax;
             v = az;
             w = cy;
           } else {
-            elevationNoise = &axisElevationNoise.noises[3];
+            thNoise = &thNoises.noises[3];
             u = ax;
             v = az;
             w = -cy;
           }
         } else {
           if (cz >= 0) {
-            elevationNoise = &axisElevationNoise.noises[4];
+            thNoise = &thNoises.noises[4];
             u = ax;
             v = ay;
             w = cz;
           } else {
-            elevationNoise = &axisElevationNoise.noises[5];
+            thNoise = &thNoises.noises[5];
             u = ax;
             v = ay;
             w = -cz;
           }
         }
+        std::array<Noise, 7> &thNoiseRef = *thNoise;
 
-        float height = baseHeight +
-          (*elevationNoise)[0].in2D((u + uvs[0]) * scales[0], (v + uvs[0]) * scales[0]) * amps[0] +
-          (*elevationNoise)[1].in2D((u + uvs[1]) * scales[1], (v + uvs[1]) * scales[1]) * amps[1] +
-          (*elevationNoise)[2].in2D((u + uvs[2]) * scales[2], (v + uvs[2]) * scales[2]) * amps[2];
+        unsigned char biome = getBiome(u, v, thNoiseRef[0], thNoiseRef[1], thNoiseRef[2], thNoiseRef[3]);
+        float biomeHeight = getBiomeHeight(biome, u, v, thNoiseRef[4], thNoiseRef[5], thNoiseRef[6]);
+        float height = baseHeight + biomeHeight;
         if (x < dimsP1[0] && y < dimsP1[1] && z < dimsP1[2]) {
           int index = x +
             (z * dimsP1[0]) +
             (y * dimsP1[0] * dimsP1[1]);
           potential[index] = (w < height) ? -offset : offset;
+          biomes[index] = biome;
           heightfield[index] = (unsigned char)std::min<float>(std::max<float>(8.0f + 0.5f - (height - w), 0.0f), 8.0f);
         }
         if (w < height) {
