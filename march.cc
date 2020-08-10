@@ -777,9 +777,22 @@ inline void setLights(const std::array<float, 3> &v, unsigned char *field, unsig
     (y * dims[0] * dims[1]);
   lights[lightIndex] = field[index];
 }
+inline void setUvs(const std::array<float, 3> &v, unsigned char *biomes, std::map<int, std::tuple<float, float, float, float>> colorMap, float *uvs, unsigned int uvIndex, int dims[3]) {
+  int x = (int)std::floor(v[0]);
+  int y = (int)std::floor(v[1]);
+  int z = (int)std::floor(v[2]);
+  int index = x +
+    (z * dims[0]) +
+    (y * dims[0] * dims[1]);
+  int biome = biomes[index];
+  std::tuple<float, float, float, float> &color = colorMap[biome];
+  uvs[uvIndex] = std::get<0>(color);
+  uvs[uvIndex+1] = std::get<1>(color);
+}
 
-void marchingCubes2(int dims[3], float *potential, unsigned char *biomes, unsigned char *heightfield, unsigned char *lightfield, float shift[3], float scale[3], float *positions, float *barycentrics, unsigned int &positionIndex, unsigned int &barycentricIndex, unsigned char *skyLights, unsigned char *torchLights) {
+void marchingCubes2(int dims[3], float *potential, unsigned char *biomes, unsigned char *heightfield, unsigned char *lightfield, float shift[3], float scale[3], float *positions, float *uvs, float *barycentrics, unsigned int &positionIndex, unsigned int &uvIndex, unsigned int &barycentricIndex, unsigned char *skyLights, unsigned char *torchLights) {
   positionIndex = 0;
+  uvIndex = 0;
   barycentricIndex = 0;
   unsigned int lightIndex = 0;
 
@@ -840,6 +853,16 @@ void marchingCubes2(int dims[3], float *potential, unsigned char *biomes, unsign
 	  setLights(c, heightfield, skyLights, lightIndex, dims);
 	  setLights(c, lightfield, torchLights, lightIndex, dims);
 	  lightIndex++;
+
+	  setUvs(a, biomes, groundColors, uvs, uvIndex, dims);
+	  setUvs(a, biomes, groundNormals, uvs, uvIndex, dims);
+	  uvIndex += 2;
+	  setUvs(b, biomes, groundColors, uvs, uvIndex, dims);
+	  setUvs(b, biomes, groundNormals, uvs, uvIndex, dims);
+	  uvIndex += 2;
+	  setUvs(c, biomes, groundColors, uvs, uvIndex, dims);
+	  setUvs(c, biomes, groundNormals, uvs, uvIndex, dims);
+	  uvIndex += 2;
 	}
 	for (int i = 0; i < 12; i++) {
 	  std::array<float, 3> &v = edges[i];
