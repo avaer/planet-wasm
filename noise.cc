@@ -60,27 +60,26 @@ inline unsigned char getBiome(float x, float z, Noise &oceanNoise, Noise &riverN
     unsigned char biome = 0xFF;
     if (oceanNoise.in2D(x, z) < (80.0 / 255.0)) {
       biome = (unsigned char)BIOME::biOcean;
-    }
-    if (biome == 0xFF) {
+    } else {
       const double n = riverNoise.in2D(x, z);
       const double range = 0.022;
       if (n > 0.5 - range && n < 0.5 + range) {
         biome = (unsigned char)BIOME::biRiver;
       }
     }
-    if (std::pow(temperatureNoise.in2D(x, z), 1.3) < ((4.0 * 16.0) / 255.0)) {
-      if (biome == (unsigned char)BIOME::biOcean) {
-        biome = (unsigned char)BIOME::biFrozenOcean;
-      } else if (biome == (unsigned char)BIOME::biRiver) {
-        biome = (unsigned char)BIOME::biFrozenRiver;
-      }
-    }
     if (biome == 0xFF) {
       const int t = (int)std::floor(std::pow(temperatureNoise.in2D(x, z), 1.3) * 16.0);
       const int h = (int)std::floor(std::pow(humidityNoise.in2D(x, z), 1.3) * 16.0);
       biome = (unsigned char)BIOMES_TEMPERATURE_HUMIDITY[t + 16 * h];
+    } else {
+      if (std::pow(temperatureNoise.in2D(x, z), 1.3) < ((4.0 * 16.0) / 255.0)) {
+        if (biome == (unsigned char)BIOME::biOcean) {
+          biome = (unsigned char)BIOME::biFrozenOcean;
+        } else /* if (biome == (unsigned char)BIOME::biRiver) */ {
+          biome = (unsigned char)BIOME::biFrozenRiver;
+        }
+      }
     }
-
     return biome;
   // }
 }
