@@ -848,9 +848,18 @@ void marchingCubes2(int dims[3], float *potential, unsigned char *biomes, unsign
 	  lightIndex++;
 	  }
       {
-      int x = (int)std::floor(a[0]);
-	  int y = (int)std::floor(a[1]);
-	  int z = (int)std::floor(a[2]);
+      // Vec center(std::min({a[0], b[0], c[0]}), std::min({a[1], b[1], c[1]}), std::min({a[2], b[2], c[2]}));
+      Tri tri(
+      	Vec(a[0], a[1], a[2]),
+      	Vec(b[0], b[1], b[2]),
+      	Vec(c[0], c[1], c[2])
+      );
+      Vec center = tri.midpoint();
+      Vec normal = tri.normal();
+      Vec point = center;// - normal;
+      int x = (int)std::round(std::min(std::max(point.x, 0.0f), (float)dims[0]));
+	  int y = (int)std::round(std::min(std::max(point.y, 0.0f), (float)dims[1]));
+	  int z = (int)std::round(std::min(std::max(point.z, 0.0f), (float)dims[2]));
 	  int index = x +
 	    (z * dims[0]) +
 	    (y * dims[0] * dims[1]);
