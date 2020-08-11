@@ -855,15 +855,14 @@ void marchingCubes2(int dims[3], float *potential, unsigned char *biomes, unsign
       	Vec(c[0], c[1], c[2])
       );
       Vec center = tri.midpoint();
-      Vec normal = tri.normal();
-      Vec point = center;// - normal;
-      int x = (int)std::round(std::min(std::max(point.x, 0.0f), (float)dims[0]));
-	  int y = (int)std::round(std::min(std::max(point.y, 0.0f), (float)dims[1]));
-	  int z = (int)std::round(std::min(std::max(point.z, 0.0f), (float)dims[2]));
-	  int index = x +
-	    (z * dims[0]) +
-	    (y * dims[0] * dims[1]);
-	  int biome = biomes[index];
+      // Vec normal = tri.normal();
+      // Vec point = center;// - normal;
+      int x = (int)center.x;
+	  int y = (int)center.y;
+	  int z = (int)center.z;
+	  int biomeIndex = x +
+	    (z * dims[0]);
+	  int biome = biomes[biomeIndex];
 	  const std::tuple<float, float> &color = groundColors[biome];
 
 	  setUvs(color, uvs, uvIndex);
