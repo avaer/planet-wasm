@@ -137,7 +137,7 @@ public:
   TemperatureHumidityNoise(int &seed) {
     noises.reserve(6);
     for (int i = 0; i < 6; i++) {
-      noises.push_back(std::array<Noise, 7>{
+      noises.push_back(std::vector<Noise>{
         Noise(seed++, thFreq, thOctaves),
         Noise(seed++, thFreq, thOctaves),
         Noise(seed++, thFreq, thOctaves),
@@ -148,7 +148,7 @@ public:
       });
     }
   }
-  std::vector<std::array<Noise, 7>> noises;
+  std::vector<std::vector<Noise>> noises;
 };
 
 float getHeight(int seed, float ax, float ay, float az, float baseHeight, int limits[3]) {
@@ -158,7 +158,6 @@ float getHeight(int seed, float ax, float ay, float az, float baseHeight, int li
 
   TemperatureHumidityNoise thNoises(seed);
 
-  std::array<Noise, 7> *thNoise;
   float u, v, w;
   u = ax;
   v = az;
@@ -200,11 +199,17 @@ float getHeight(int seed, float ax, float ay, float az, float baseHeight, int li
       w = -cz;
     }
   } */
-  std::array<Noise, 7> &thNoiseRef = *thNoise;
+  std::vector<Noise> &thNoiseRef = thNoises.noises[2];
 
-  unsigned char biome = getBiome(u, v, thNoiseRef[0], thNoiseRef[1], thNoiseRef[2], thNoiseRef[3]);
-  float biomeHeight = getBiomeHeight(biome, u, v, thNoiseRef[4], thNoiseRef[5], thNoiseRef[6]);
-  return biomeHeight;
+  float totalHeight = 0;
+  for (int dz = -4; dz <= 4; dz++) {
+    for (int dx = -4; dx <= 4; dx++) {
+      unsigned char biome = getBiome(u + dx, v + dz, thNoiseRef[0], thNoiseRef[1], thNoiseRef[2], thNoiseRef[3]);
+      float biomeHeight = getBiomeHeight(biome, u + dx, v + dz, thNoiseRef[4], thNoiseRef[5], thNoiseRef[6]);
+      totalHeight += biomeHeight;
+    }
+  }
+  return totalHeight/(float)((4+1+4)*(4+1+4));
 }
 
 void noise3(int seed, float baseHeight, int dims[3], float shifts[3], int limits[3], float wormRate, float wormRadiusBase, float wormRadiusRate, float objectsRate, float offset, float *potential, unsigned char *biomes, unsigned char *heightfield, float *objectPositions, float *objectQuaternions, unsigned int *objectTypes, unsigned int &numObjects, unsigned int maxNumObjects) {
@@ -248,8 +253,31 @@ void noise3(int seed, float baseHeight, int dims[3], float shifts[3], int limits
     dims[1]+3,
     dims[2]+3,
   };
+  int dimsP11[3] = {
+    dims[0]+11,
+    dims[1]+11,
+    dims[2]+11,
+  };
 
   std::vector<unsigned char> fills(dimsP3[0]*dimsP3[1]*dimsP3[2]);
+  std::vector<unsigned char> biomesAux;
+  biomesAux.resize(dimsP11[0]*dimsP11[2]);
+  std::fill(biomesAux.begin(), biomesAux.end(), 0xFF);
+  std::vector<float> biomesAuxHeight;
+  biomesAuxHeight.resize(dimsP11[0]*dimsP11[2]);
+  {
+    std::vector<Noise> &thNoiseRef = thNoises.noises[2];
+    int biomeAuxHeightIndex = 0;
+    for (int dz = -4; dz < dimsP3[2] + 4; dz++) {
+      for (int dx = -4; dx < dimsP3[0] + 4; dx++) {
+        int index = biomeAuxHeightIndex++;
+        unsigned char biome = getBiome(shifts[0] + dx, shifts[2] + dz, thNoiseRef[0], thNoiseRef[1], thNoiseRef[2], thNoiseRef[3]);
+        biomesAux[index] = biome;
+        float biomeHeight = getBiomeHeight(biome, shifts[0] + dx, shifts[2] + dz, thNoiseRef[4], thNoiseRef[5], thNoiseRef[6]);
+        biomesAuxHeight[index] = biomeHeight;
+      }
+    }
+  }
 
   for (int x = 0; x < dimsP3[0]; x++) {
     float ax = shifts[0] + x;
@@ -261,9 +289,7 @@ void noise3(int seed, float baseHeight, int dims[3], float shifts[3], int limits
         float ay = shifts[1] + y;
         // float cy = ay - (float)(limits[1])/2.0f;
 
-        std::array<Noise, 7> *thNoise;
         float u, v, w;
-        thNoise = &thNoises.noises[2];
         u = ax;
         v = az;
         w = ay;
@@ -304,18 +330,33 @@ void noise3(int seed, float baseHeight, int dims[3], float shifts[3], int limits
             w = -cz;
           }
         } */
-        std::array<Noise, 7> &thNoiseRef = *thNoise;
+        std::vector<Noise> &thNoiseRef = thNoises.noises[2];
 
-        unsigned char biome = getBiome(u, v, thNoiseRef[0], thNoiseRef[1], thNoiseRef[2], thNoiseRef[3]);
-        float biomeHeight = getBiomeHeight(biome, u, v, thNoiseRef[4], thNoiseRef[5], thNoiseRef[6]);
-        float height = biomeHeight;
+        int biomeSrcIndex = (x + 4) +
+          (z + 4) * dimsP11[0];
+        unsigned char biome = biomesAux[biomeSrcIndex];
+
+        float totalHeight = 0;
+        for (int dz = -4; dz <= 4; dz++) {
+          for (int dx = -4; dx <= 4; dx++) {
+            int biomeSrcIndex = (x + 4 + dx) +
+              (z + 4 + dz) * dimsP11[0];
+            float biomeHeight = biomesAuxHeight[biomeSrcIndex];
+            totalHeight += biomeHeight;
+          }
+        }
+        float height = totalHeight/(float)((4+1+4)*(4+1+4));
+
         if (x < dimsP1[0] && y < dimsP1[1] && z < dimsP1[2]) {
           int index = x +
             (z * dimsP1[0]) +
             (y * dimsP1[0] * dimsP1[1]);
           potential[index] = (w < height) ? -offset : offset;
-          biomes[index] = biome;
           heightfield[index] = (unsigned char)std::min<float>(std::max<float>(8.0f + 0.5f - (height - w), 0.0f), 8.0f);
+
+          int biomeIndex = x +
+            (z * dimsP1[0]);
+          biomes[biomeIndex] = biome;
         }
         if (w < height) {
           int fillIndex = x +
