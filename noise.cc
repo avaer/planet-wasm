@@ -152,15 +152,18 @@ public:
 };
 
 float getHeight(int seed, float ax, float ay, float az, float baseHeight, int limits[3]) {
-  float cx = ax - (float)(limits[0])/2.0f;
-  float cy = ay - (float)(limits[1])/2.0f;
-  float cz = az - (float)(limits[2])/2.0f;
+  // float cx = ax - (float)(limits[0])/2.0f;
+  // float cy = ay - (float)(limits[1])/2.0f;
+  // float cz = az - (float)(limits[2])/2.0f;
 
   TemperatureHumidityNoise thNoises(seed);
 
   std::array<Noise, 7> *thNoise;
   float u, v, w;
-  if (std::abs(cx) >= std::abs(cy) && std::abs(cx) >= std::abs(cz)) {
+  u = ax;
+  v = az;
+  w = ay;
+  /* if (std::abs(cx) >= std::abs(cy) && std::abs(cx) >= std::abs(cz)) {
     if (cx >= 0) {
       thNoise = &thNoises.noises[0];
       u = az;
@@ -196,12 +199,12 @@ float getHeight(int seed, float ax, float ay, float az, float baseHeight, int li
       v = ay;
       w = -cz;
     }
-  }
+  } */
   std::array<Noise, 7> &thNoiseRef = *thNoise;
 
   unsigned char biome = getBiome(u, v, thNoiseRef[0], thNoiseRef[1], thNoiseRef[2], thNoiseRef[3]);
   float biomeHeight = getBiomeHeight(biome, u, v, thNoiseRef[4], thNoiseRef[5], thNoiseRef[6]);
-  return baseHeight + biomeHeight;
+  return biomeHeight;
 }
 
 void noise3(int seed, float baseHeight, int dims[3], float shifts[3], int limits[3], float wormRate, float wormRadiusBase, float wormRadiusRate, float objectsRate, float offset, float *potential, unsigned char *biomes, unsigned char *heightfield, float *objectPositions, float *objectQuaternions, unsigned int *objectTypes, unsigned int &numObjects, unsigned int maxNumObjects) {
@@ -250,17 +253,21 @@ void noise3(int seed, float baseHeight, int dims[3], float shifts[3], int limits
 
   for (int x = 0; x < dimsP3[0]; x++) {
     float ax = shifts[0] + x;
-    float cx = ax - (float)(limits[0])/2.0f;
+    // float cx = ax - (float)(limits[0])/2.0f;
     for (int z = 0; z < dimsP3[2]; z++) {
       float az = shifts[2] + z;
-      float cz = az - (float)(limits[2])/2.0f;
+      // float cz = az - (float)(limits[2])/2.0f;
       for (int y = 0; y < dimsP3[1]; y++) {
         float ay = shifts[1] + y;
-        float cy = ay - (float)(limits[1])/2.0f;
+        // float cy = ay - (float)(limits[1])/2.0f;
 
         std::array<Noise, 7> *thNoise;
         float u, v, w;
-        if (std::abs(cx) >= std::abs(cy) && std::abs(cx) >= std::abs(cz)) {
+        thNoise = &thNoises.noises[2];
+        u = ax;
+        v = az;
+        w = ay;
+        /* if (std::abs(cx) >= std::abs(cy) && std::abs(cx) >= std::abs(cz)) {
           if (cx >= 0) {
             thNoise = &thNoises.noises[0];
             u = az;
@@ -296,12 +303,12 @@ void noise3(int seed, float baseHeight, int dims[3], float shifts[3], int limits
             v = ay;
             w = -cz;
           }
-        }
+        } */
         std::array<Noise, 7> &thNoiseRef = *thNoise;
 
         unsigned char biome = getBiome(u, v, thNoiseRef[0], thNoiseRef[1], thNoiseRef[2], thNoiseRef[3]);
         float biomeHeight = getBiomeHeight(biome, u, v, thNoiseRef[4], thNoiseRef[5], thNoiseRef[6]);
-        float height = baseHeight + biomeHeight;
+        float height = biomeHeight;
         if (x < dimsP1[0] && y < dimsP1[1] && z < dimsP1[2]) {
           int index = x +
             (z * dimsP1[0]) +
