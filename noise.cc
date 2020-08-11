@@ -135,20 +135,17 @@ constexpr int elevationOctaves = 1;
 class TemperatureHumidityNoise {
 public:
   TemperatureHumidityNoise(int &seed) {
-    noises.reserve(6);
-    for (int i = 0; i < 6; i++) {
-      noises.push_back(std::array<Noise, 7>{
-        Noise(seed++, thFreq, thOctaves),
-        Noise(seed++, thFreq, thOctaves),
-        Noise(seed++, thFreq, thOctaves),
-        Noise(seed++, thFreq, thOctaves),
-        Noise(seed++, elevationFreq, elevationOctaves),
-        Noise(seed++, elevationFreq, elevationOctaves),
-        Noise(seed++, elevationFreq, elevationOctaves),
-      });
-    }
+    noises = std::array<Noise, 7>{
+      Noise(seed++, thFreq, thOctaves),
+      Noise(seed++, thFreq, thOctaves),
+      Noise(seed++, thFreq, thOctaves),
+      Noise(seed++, thFreq, thOctaves),
+      Noise(seed++, elevationFreq, elevationOctaves),
+      Noise(seed++, elevationFreq, elevationOctaves),
+      Noise(seed++, elevationFreq, elevationOctaves),
+    };
   }
-  std::vector<std::array<Noise, 7>> noises;
+  std::array<Noise, 7> noises;
 };
 
 float getHeight(int seed, float ax, float ay, float az, float baseHeight, int limits[3]) {
@@ -199,7 +196,7 @@ float getHeight(int seed, float ax, float ay, float az, float baseHeight, int li
       w = -cz;
     }
   } */
-  std::array<Noise, 7> &thNoiseRef = thNoises.noises[2];
+  std::array<Noise, 7> &thNoiseRef = thNoises.noises;
 
   float totalHeight = 0;
   for (int dz = -4; dz <= 4; dz++) {
@@ -266,7 +263,7 @@ void noise3(int seed, float baseHeight, int dims[3], float shifts[3], int limits
   std::vector<float> biomesAuxHeight;
   biomesAuxHeight.resize(dimsP11[0]*dimsP11[2]);
   {
-    std::array<Noise, 7> &thNoiseRef = thNoises.noises[2];
+    std::array<Noise, 7> &thNoiseRef = thNoises.noises;
     int biomeAuxHeightIndex = 0;
     for (int dz = -4; dz < dimsP3[2] + 4; dz++) {
       for (int dx = -4; dx < dimsP3[0] + 4; dx++) {
@@ -330,7 +327,7 @@ void noise3(int seed, float baseHeight, int dims[3], float shifts[3], int limits
             w = -cz;
           }
         } */
-        std::array<Noise, 7> &thNoiseRef = thNoises.noises[2];
+        std::array<Noise, 7> &thNoiseRef = thNoises.noises;
 
         int biomeSrcIndex = (x + 4) +
           (z + 4) * dimsP11[0];
