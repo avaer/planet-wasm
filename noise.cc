@@ -249,7 +249,7 @@ void noise3(int seed, float baseHeight, int dims[3], float shifts[3], int limits
     dims[2]+3,
   };
 
-  std::vector<unsigned char> fills(dimsP1[0]*dimsP1[1]*dimsP1[2]);
+  std::vector<unsigned char> fills(dimsP3[0]*dimsP3[1]*dimsP3[2]);
 
   for (int x = 0; x < dimsP3[0]; x++) {
     float ax = shifts[0] + x;
