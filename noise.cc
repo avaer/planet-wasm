@@ -208,8 +208,8 @@ float getHeight(int seed, float ax, float ay, float az, float baseHeight, int li
 }
 
 void noise3(int seed, float baseHeight, int dims[3], float shifts[3], int limits[3], float wormRate, float wormRadiusBase, float wormRadiusRate, float objectsRate, float offset, float *potential, unsigned char *biomes, unsigned char *heightfield, float *objectPositions, float *objectQuaternions, unsigned int *objectTypes, unsigned int &numObjects, unsigned int maxNumObjects) {
-  memset(potential, 0, dims[0]*dims[1]*dims[2]*sizeof(float));
-  memset(biomes, 0, dims[0]*dims[1]*dims[2]*sizeof(unsigned char));
+  memset(potential, 0, (dims[0]+1)*(dims[1]+1)*(dims[2]+1)*sizeof(float));
+  memset(biomes, 0, (dims[0]+1)*(dims[2]+1)*sizeof(unsigned char));
   memset(heightfield, 0, dims[0]*dims[1]*dims[2]*sizeof(unsigned char));
   TemperatureHumidityNoise thNoises(seed);
 
