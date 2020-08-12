@@ -1,5 +1,6 @@
 #include "march.h"
 #include "vector.h"
+#include "biomes.h"
 #include <cstdlib>
 #include <array>
 #include <map>
@@ -768,6 +769,12 @@ void marchingCubes(int dims[3], float *potential, int shift[3], int indexOffset,
   }
 } */
 
+inline int getPotentialIndex(int x, int y, int z, int dims[3]) {
+  return x +
+    z * dims[0] +
+    y * dims[0] * dims[1];
+}
+
 inline void setLights(const std::array<float, 3> &v, unsigned char *field, unsigned char *lights, unsigned int lightIndex, int dims[3]) {
   int x = (int)std::floor(v[0]);
   int y = (int)std::floor(v[1]);
@@ -783,12 +790,7 @@ inline void setUvs(const std::tuple<float, float> &color, float *uvs, unsigned i
 }
 
 template<bool transparent>
-inline void marchingCubesRaw(int dims[3], std::function<float(int)> getPotential, std::function<unsigned char(int)> getBiome, unsigned char *heightfield, unsigned char *lightfield, float shift[3], float scale[3], float *positions, float *uvs, float *barycentrics, unsigned int &positionIndex, unsigned int &uvIndex, unsigned int &barycentricIndex, unsigned char *skyLights, unsigned char *torchLights) {
-  positionIndex = 0;
-  uvIndex = 0;
-  barycentricIndex = 0;
-  unsigned int lightIndex = 0;
-
+inline void marchingCubesRaw(int dims[3], std::function<float(int, int, int)> getPotential, std::function<unsigned char(int)> getBiome, unsigned char *heightfield, unsigned char *lightfield, float shift[3], float scale[3], float *positions, float *uvs, float *barycentrics, unsigned int &positionIndex, unsigned int &uvIndex, unsigned int &barycentricIndex, unsigned char *skyLights, unsigned char *torchLights, unsigned int &lightIndex) {
   int n = 0;
   float grid[8] = {0};
   std::array<std::array<float, 3>, 12> edges;
@@ -802,10 +804,7 @@ inline void marchingCubesRaw(int dims[3], std::function<float(int)> getPotential
     int cube_index = 0;
     for(int i=0; i<8; ++i) {
       int *v = cubeVerts[i];
-      int potentialIndex = (x[0]+v[0]) +
-        (((x[2]+v[2])) * dims[0]) +
-        ((x[1]+v[1]) * dims[0] * dims[1]);
-      float s = getPotential(potentialIndex);
+      float s = getPotential(x[0]+v[0], x[1]+v[1], x[2]+v[2]);
       grid[i] = s;
       cube_index |= (s > 0) ? 1 << i : 0;
     }
@@ -832,86 +831,61 @@ inline void marchingCubesRaw(int dims[3], std::function<float(int)> getPotential
     }
     //Add faces
     int *f = triTable[cube_index];
-    if (!transparent) {
-      for(int i=0;f[i]!=-1;i+=3) {
-        std::array<float, 3> &a = edges[f[i]];
-        std::array<float, 3> &b = edges[f[i+2]];
-        std::array<float, 3> &c = edges[f[i+1]];
+    for(int i=0;f[i]!=-1;i+=3) {
+      std::array<float, 3> &a = edges[f[i]];
+      std::array<float, 3> &b = edges[f[i+2]];
+      std::array<float, 3> &c = edges[f[i+1]];
 
-        {
-          setLights(a, heightfield, skyLights, lightIndex, dims);
-          setLights(a, lightfield, torchLights, lightIndex, dims);
-          lightIndex++;
-          setLights(b, heightfield, skyLights, lightIndex, dims);
-          setLights(b, lightfield, torchLights, lightIndex, dims);
-          lightIndex++;
-          setLights(c, heightfield, skyLights, lightIndex, dims);
-          setLights(c, lightfield, torchLights, lightIndex, dims);
-          lightIndex++;
-        }
-        {
-          // Vec center(std::min({a[0], b[0], c[0]}), std::min({a[1], b[1], c[1]}), std::min({a[2], b[2], c[2]}));
-          Tri tri(
-            Vec(a[0], a[1], a[2]),
-            Vec(b[0], b[1], b[2]),
-            Vec(c[0], c[1], c[2])
-          );
-          Vec center = tri.midpoint();
-          // Vec normal = tri.normal();
-          // Vec point = center;// - normal;
-          int x = (int)center.x;
-          // int y = (int)center.y;
-          int z = (int)center.z;
-          int biomeIndex = x +
-            (z * dims[0]);
-          int biome = (int)getBiome(biomeIndex);
-          const std::tuple<float, float> &color = groundColors[biome];
-
-          setUvs(color, uvs, uvIndex);
-          // setUvs(a, biomes, groundNormals, uvs, uvIndex, dims);
-          uvIndex += 2;
-          setUvs(color, uvs, uvIndex);
-          // setUvs(b, biomes, groundNormals, uvs, uvIndex, dims);
-          uvIndex += 2;
-          setUvs(color, uvs, uvIndex);
-          // setUvs(c, biomes, groundNormals, uvs, uvIndex, dims);
-          uvIndex += 2;
-        }
+      if (!transparent) {
+        setLights(a, heightfield, skyLights, lightIndex, dims);
+        setLights(a, lightfield, torchLights, lightIndex, dims);
+        lightIndex++;
+        setLights(b, heightfield, skyLights, lightIndex, dims);
+        setLights(b, lightfield, torchLights, lightIndex, dims);
+        lightIndex++;
+        setLights(c, heightfield, skyLights, lightIndex, dims);
+        setLights(c, lightfield, torchLights, lightIndex, dims);
+        lightIndex++;
+      } else {
+        constexpr float skyLight = 8.0f;
+        constexpr float torchLight = 0.0f;
+        skyLights[lightIndex] = skyLight;
+        torchLights[lightIndex] = torchLight;
+        lightIndex++;
+        skyLights[lightIndex] = skyLight;
+        torchLights[lightIndex] = torchLight;
+        lightIndex++;
+        skyLights[lightIndex] = skyLight;
+        torchLights[lightIndex] = torchLight;
+        lightIndex++;
       }
-    } else {
-      for(int i=0;f[i]!=-1;i+=3) {
-        std::array<float, 3> &a = edges[f[i]];
-        std::array<float, 3> &b = edges[f[i+2]];
-        std::array<float, 3> &c = edges[f[i+1]];
+      {
+        // Vec center(std::min({a[0], b[0], c[0]}), std::min({a[1], b[1], c[1]}), std::min({a[2], b[2], c[2]}));
+        Tri tri(
+          Vec(a[0], a[1], a[2]),
+          Vec(b[0], b[1], b[2]),
+          Vec(c[0], c[1], c[2])
+        );
+        Vec center = tri.midpoint();
+        // Vec normal = tri.normal();
+        // Vec point = center;// - normal;
+        int x = (int)center.x;
+        // int y = (int)center.y;
+        int z = (int)center.z;
+        int biomeIndex = x +
+          (z * dims[0]);
+        int biome = (int)getBiome(biomeIndex);
+        const std::tuple<float, float> &color = groundColors[biome];
 
-        {
-          // Vec center(std::min({a[0], b[0], c[0]}), std::min({a[1], b[1], c[1]}), std::min({a[2], b[2], c[2]}));
-          Tri tri(
-            Vec(a[0], a[1], a[2]),
-            Vec(b[0], b[1], b[2]),
-            Vec(c[0], c[1], c[2])
-          );
-          Vec center = tri.midpoint();
-          // Vec normal = tri.normal();
-          // Vec point = center;// - normal;
-          int x = (int)center.x;
-          // int y = (int)center.y;
-          int z = (int)center.z;
-          int biomeIndex = x +
-            (z * dims[0]);
-          int biome = getBiome(biomeIndex);
-          const std::tuple<float, float> &color = groundColors[biome];
-
-          setUvs(color, uvs, uvIndex);
-          // setUvs(a, biomes, groundNormals, uvs, uvIndex, dims);
-          uvIndex += 2;
-          setUvs(color, uvs, uvIndex);
-          // setUvs(b, biomes, groundNormals, uvs, uvIndex, dims);
-          uvIndex += 2;
-          setUvs(color, uvs, uvIndex);
-          // setUvs(c, biomes, groundNormals, uvs, uvIndex, dims);
-          uvIndex += 2;
-        }
+        setUvs(color, uvs, uvIndex);
+        // setUvs(a, biomes, groundNormals, uvs, uvIndex, dims);
+        uvIndex += 2;
+        setUvs(color, uvs, uvIndex);
+        // setUvs(b, biomes, groundNormals, uvs, uvIndex, dims);
+        uvIndex += 2;
+        setUvs(color, uvs, uvIndex);
+        // setUvs(c, biomes, groundNormals, uvs, uvIndex, dims);
+        uvIndex += 2;
       }
     }
     for (int i = 0; i < 12; i++) {
@@ -952,13 +926,28 @@ void marchingCubes2(int dims[3], float *potential, unsigned char *biomes, unsign
   positionIndex = 0;
   uvIndex = 0;
   barycentricIndex = 0;
-  unsigned int lightIndex = 0;
   numOpaquePositions = 0;
   numTransparentPositions = 0;
+  unsigned int lightIndex = 0;
 
-  marchingCubesRaw<false>(dims, [&](int index) -> float {
+  marchingCubesRaw<false>(dims, [&](int x, int y, int z) -> float {
+    int index = getPotentialIndex(x, y, z, dims);
     return potential[index];
   }, [&](int index) -> unsigned char {
     return biomes[index];
-  }, heightfield, lightfield, shift, scale, positions, uvs, barycentrics, positionIndex, uvIndex, barycentricIndex, skyLights, torchLights);
+  }, heightfield, lightfield, shift, scale, positions, uvs, barycentrics, positionIndex, uvIndex, barycentricIndex, skyLights, torchLights, lightIndex);
+  numOpaquePositions = positionIndex;
+
+  marchingCubesRaw<true>(dims, [&](int x, int y, int z) -> float {
+    int ay = shift[1] + y;
+    if (ay < 5.0) {
+      int index = getPotentialIndex(x, y, z, dims);
+      return -potential[index];
+    } else {
+      return 0;
+    }
+  }, [&](int index) -> unsigned char {
+    return (unsigned char)BIOME::biRiver;
+  }, heightfield, lightfield, shift, scale, positions, uvs, barycentrics, positionIndex, uvIndex, barycentricIndex, skyLights, torchLights, lightIndex);
+  numTransparentPositions = positionIndex - numOpaquePositions;
 }
