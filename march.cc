@@ -790,7 +790,7 @@ inline void setUvs(const std::tuple<float, float> &color, float *uvs, unsigned i
 }
 
 template<bool transparent>
-inline void marchingCubesRaw(int dims[3], std::function<float(int, int, int)> getPotential, std::function<unsigned char(int)> getBiome, unsigned char *heightfield, unsigned char *lightfield, float shift[3], float scale[3], float *positions, float *uvs, float *barycentrics, unsigned int &positionIndex, unsigned int &uvIndex, unsigned int &barycentricIndex, unsigned char *skyLights, unsigned char *torchLights, unsigned int &lightIndex) {
+inline void marchingCubesRaw(int dims[3], std::function<float(int, int, int)> getPotential, std::function<unsigned char(int)> getBiome, unsigned char *heightfield, unsigned char *lightfield, float shift[3], float scale[3], float yLimit, float *positions, float *uvs, float *barycentrics, unsigned int &positionIndex, unsigned int &uvIndex, unsigned int &barycentricIndex, unsigned char *skyLights, unsigned char *torchLights, unsigned int &lightIndex) {
   int n = 0;
   float grid[8] = {0};
   std::array<std::array<float, 3>, 12> edges;
@@ -901,12 +901,21 @@ inline void marchingCubesRaw(int dims[3], std::function<float(int, int, int)> ge
 
       positions[positionIndex++] = a[0];
       positions[positionIndex++] = a[1];
+      if (transparent) {
+        positions[positionIndex-1] = std::min(positions[positionIndex-1], yLimit);
+      }
       positions[positionIndex++] = a[2];
       positions[positionIndex++] = b[0];
       positions[positionIndex++] = b[1];
+      if (transparent) {
+        positions[positionIndex-1] = std::min(positions[positionIndex-1], yLimit);
+      }
       positions[positionIndex++] = b[2];
       positions[positionIndex++] = c[0];
       positions[positionIndex++] = c[1];
+      if (transparent) {
+        positions[positionIndex-1] = std::min(positions[positionIndex-1], yLimit);
+      }
       positions[positionIndex++] = c[2];
 
       barycentrics[barycentricIndex++] = 1;
@@ -935,19 +944,19 @@ void marchingCubes2(int dims[3], float *potential, unsigned char *biomes, unsign
     return potential[index];
   }, [&](int index) -> unsigned char {
     return biomes[index];
-  }, heightfield, lightfield, shift, scale, positions, uvs, barycentrics, positionIndex, uvIndex, barycentricIndex, skyLights, torchLights, lightIndex);
+  }, heightfield, lightfield, shift, scale, 0.0f, positions, uvs, barycentrics, positionIndex, uvIndex, barycentricIndex, skyLights, torchLights, lightIndex);
   numOpaquePositions = positionIndex;
 
   marchingCubesRaw<true>(dims, [&](int x, int y, int z) -> float {
     int ay = shift[1] + y;
-    if (ay < 5.0) {
+    if (ay < 5) {
       int index = getPotentialIndex(x, y, z, dims);
       return -potential[index];
     } else {
-      return 0;
+      return -0.5f;
     }
   }, [&](int index) -> unsigned char {
     return (unsigned char)BIOME::biRiver;
-  }, heightfield, lightfield, shift, scale, positions, uvs, barycentrics, positionIndex, uvIndex, barycentricIndex, skyLights, torchLights, lightIndex);
+  }, heightfield, lightfield, shift, scale, 4.0f, positions, uvs, barycentrics, positionIndex, uvIndex, barycentricIndex, skyLights, torchLights, lightIndex);
   numTransparentPositions = positionIndex - numOpaquePositions;
 }
