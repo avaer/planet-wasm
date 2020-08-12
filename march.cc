@@ -810,7 +810,16 @@ void marchingCubes2(int dims[3], float *potential, unsigned char *biomes, unsign
       return -0.5f;
     }
   }, [&](int index) -> unsigned char {
-    return (unsigned char)BIOME::biRiver;
+    unsigned char biome = biomes[index];
+    switch (biome) {
+      case (unsigned char)BIOME::biOcean:
+      case (unsigned char)BIOME::biRiver:
+        return (unsigned char)BIOME::waterOcean;
+      case (unsigned char)BIOME::biFrozenOcean:
+      case (unsigned char)BIOME::biFrozenRiver:
+        return (unsigned char)BIOME::waterOceanFrozen;
+      default: return (unsigned char)BIOME::waterOcean;
+    }
   }, heightfield, lightfield, shift, scale, 4.0f, positions, uvs, barycentrics, positionIndex, uvIndex, barycentricIndex, skyLights, torchLights, lightIndex);
   numTransparentPositions = positionIndex - numOpaquePositions;
 }
