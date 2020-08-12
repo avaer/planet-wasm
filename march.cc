@@ -524,7 +524,7 @@ void marchingCubes(int dims[3], float *potential, int shift[3], int indexOffset,
   }
 }
 
-void collideBoxEther(int dims[3], float *potential, int shift[3], float *positionSpec, bool &collided, bool &floored, bool &ceiled) {
+/* void collideBoxEther(int dims[3], float *potential, int shift[3], float *positionSpec, bool &collided, bool &floored, bool &ceiled) {
   float positions[8 * 1024];
   unsigned int indices[8 * 1024];
   unsigned int numPositions;
@@ -766,7 +766,7 @@ void collideBoxEther(int dims[3], float *potential, int shift[3], float *positio
     positionSpec[1] = position.y;
     positionSpec[2] = position.z;
   }
-}
+} */
 
 inline void setLights(const std::array<float, 3> &v, unsigned char *field, unsigned char *lights, unsigned int lightIndex, int dims[3]) {
   int x = (int)std::floor(v[0]);
@@ -782,11 +782,13 @@ inline void setUvs(const std::tuple<float, float> &color, float *uvs, unsigned i
   uvs[uvIndex+1] = std::get<1>(color);
 }
 
-void marchingCubes2(int dims[3], float *potential, unsigned char *biomes, unsigned char *heightfield, unsigned char *lightfield, float shift[3], float scale[3], float *positions, float *uvs, float *barycentrics, unsigned int &positionIndex, unsigned int &uvIndex, unsigned int &barycentricIndex, unsigned char *skyLights, unsigned char *torchLights) {
+void marchingCubes2(int dims[3], float *potential, unsigned char *biomes, unsigned char *heightfield, unsigned char *lightfield, float shift[3], float scale[3], float *positions, float *uvs, float *barycentrics, unsigned int &positionIndex, unsigned int &uvIndex, unsigned int &barycentricIndex, unsigned char *skyLights, unsigned char *torchLights, unsigned int &numOpaquePositions, unsigned int &numTransparentPositions) {
   positionIndex = 0;
   uvIndex = 0;
   barycentricIndex = 0;
   unsigned int lightIndex = 0;
+  numOpaquePositions = 0;
+  numTransparentPositions = 0;
 
   int n = 0;
   float grid[8] = {0};
@@ -813,99 +815,99 @@ void marchingCubes2(int dims[3], float *potential, unsigned char *biomes, unsign
     if(edge_mask == 0) {
       continue;
     }
-	for(int i=0; i<12; ++i) {
-	  if((edge_mask & (1<<i)) == 0) {
-	    continue;
+	  for(int i=0; i<12; ++i) {
+	    if((edge_mask & (1<<i)) == 0) {
+	      continue;
+	    }
+	    int *e = edgeIndex[i];
+	    int *p0 = cubeVerts[e[0]];
+	    int *p1 = cubeVerts[e[1]];
+	    float a = grid[e[0]];
+	    float b = grid[e[1]];
+	    float d = a - b;
+	    float t = a / d;
+	    std::array<float, 3> &v = edges[i];
+	    for(int j=0; j<3; ++j) {
+	      v[j] = (x[j] + p0[j]) + t * (p1[j] - p0[j]);
+	    }
 	  }
-	  int *e = edgeIndex[i];
-	  int *p0 = cubeVerts[e[0]];
-	  int *p1 = cubeVerts[e[1]];
-	  float a = grid[e[0]];
-	  float b = grid[e[1]];
-	  float d = a - b;
-	  float t = a / d;
-	  std::array<float, 3> &v = edges[i];
-	  for(int j=0; j<3; ++j) {
-	    v[j] = (x[j] + p0[j]) + t * (p1[j] - p0[j]);
-	  }
-	}
-	//Add faces
-	int *f = triTable[cube_index];
-	for(int i=0;f[i]!=-1;i+=3) {
-	  std::array<float, 3> &a = edges[f[i]];
-	  std::array<float, 3> &b = edges[f[i+2]];
-	  std::array<float, 3> &c = edges[f[i+1]];
+	  //Add faces
+	  int *f = triTable[cube_index];
+	  for(int i=0;f[i]!=-1;i+=3) {
+	    std::array<float, 3> &a = edges[f[i]];
+	    std::array<float, 3> &b = edges[f[i+2]];
+	    std::array<float, 3> &c = edges[f[i+1]];
 
-      {
-	  setLights(a, heightfield, skyLights, lightIndex, dims);
-	  setLights(a, lightfield, torchLights, lightIndex, dims);
-	  lightIndex++;
-	  setLights(b, heightfield, skyLights, lightIndex, dims);
-	  setLights(b, lightfield, torchLights, lightIndex, dims);
-	  lightIndex++;
-	  setLights(c, heightfield, skyLights, lightIndex, dims);
-	  setLights(c, lightfield, torchLights, lightIndex, dims);
-	  lightIndex++;
-	  }
-      {
-      // Vec center(std::min({a[0], b[0], c[0]}), std::min({a[1], b[1], c[1]}), std::min({a[2], b[2], c[2]}));
-      Tri tri(
-      	Vec(a[0], a[1], a[2]),
-      	Vec(b[0], b[1], b[2]),
-      	Vec(c[0], c[1], c[2])
-      );
-      Vec center = tri.midpoint();
-      // Vec normal = tri.normal();
-      // Vec point = center;// - normal;
-      int x = (int)center.x;
-	  int y = (int)center.y;
-	  int z = (int)center.z;
-	  int biomeIndex = x +
-	    (z * dims[0]);
-	  int biome = biomes[biomeIndex];
-	  const std::tuple<float, float> &color = groundColors[biome];
+	    {
+	      setLights(a, heightfield, skyLights, lightIndex, dims);
+	      setLights(a, lightfield, torchLights, lightIndex, dims);
+	      lightIndex++;
+	      setLights(b, heightfield, skyLights, lightIndex, dims);
+	      setLights(b, lightfield, torchLights, lightIndex, dims);
+	      lightIndex++;
+	      setLights(c, heightfield, skyLights, lightIndex, dims);
+	      setLights(c, lightfield, torchLights, lightIndex, dims);
+	      lightIndex++;
+	    }
+	    {
+	      // Vec center(std::min({a[0], b[0], c[0]}), std::min({a[1], b[1], c[1]}), std::min({a[2], b[2], c[2]}));
+	      Tri tri(
+	        Vec(a[0], a[1], a[2]),
+	        Vec(b[0], b[1], b[2]),
+	        Vec(c[0], c[1], c[2])
+	      );
+	      Vec center = tri.midpoint();
+	      // Vec normal = tri.normal();
+	      // Vec point = center;// - normal;
+	      int x = (int)center.x;
+	      int y = (int)center.y;
+	      int z = (int)center.z;
+	      int biomeIndex = x +
+	        (z * dims[0]);
+	      int biome = biomes[biomeIndex];
+	      const std::tuple<float, float> &color = groundColors[biome];
 
-	  setUvs(color, uvs, uvIndex);
-	  // setUvs(a, biomes, groundNormals, uvs, uvIndex, dims);
-	  uvIndex += 2;
-	  setUvs(color, uvs, uvIndex);
-	  // setUvs(b, biomes, groundNormals, uvs, uvIndex, dims);
-	  uvIndex += 2;
-	  setUvs(color, uvs, uvIndex);
-	  // setUvs(c, biomes, groundNormals, uvs, uvIndex, dims);
-	  uvIndex += 2;
+	      setUvs(color, uvs, uvIndex);
+	      // setUvs(a, biomes, groundNormals, uvs, uvIndex, dims);
+	      uvIndex += 2;
+	      setUvs(color, uvs, uvIndex);
+	      // setUvs(b, biomes, groundNormals, uvs, uvIndex, dims);
+	      uvIndex += 2;
+	      setUvs(color, uvs, uvIndex);
+	      // setUvs(c, biomes, groundNormals, uvs, uvIndex, dims);
+	      uvIndex += 2;
+	    }
 	  }
-	}
-	for (int i = 0; i < 12; i++) {
-	  std::array<float, 3> &v = edges[i];
-	  for(int j=0; j<3; ++j) {
-	    v[j] = (v[j] + shift[j]) * scale[j];
+	  for (int i = 0; i < 12; i++) {
+	    std::array<float, 3> &v = edges[i];
+	    for(int j=0; j<3; ++j) {
+	      v[j] = (v[j] + shift[j]) * scale[j];
+	    }
 	  }
-	}
-	for(int i=0;f[i]!=-1;i+=3) {
-	  std::array<float, 3> &a = edges[f[i]];
-	  std::array<float, 3> &b = edges[f[i+2]];
-	  std::array<float, 3> &c = edges[f[i+1]];
+	  for(int i=0;f[i]!=-1;i+=3) {
+	    std::array<float, 3> &a = edges[f[i]];
+	    std::array<float, 3> &b = edges[f[i+2]];
+	    std::array<float, 3> &c = edges[f[i+1]];
 
-	  positions[positionIndex++] = a[0];
-	  positions[positionIndex++] = a[1];
-	  positions[positionIndex++] = a[2];
-	  positions[positionIndex++] = b[0];
-	  positions[positionIndex++] = b[1];
-	  positions[positionIndex++] = b[2];
-	  positions[positionIndex++] = c[0];
-	  positions[positionIndex++] = c[1];
-	  positions[positionIndex++] = c[2];
+	    positions[positionIndex++] = a[0];
+	    positions[positionIndex++] = a[1];
+	    positions[positionIndex++] = a[2];
+	    positions[positionIndex++] = b[0];
+	    positions[positionIndex++] = b[1];
+	    positions[positionIndex++] = b[2];
+	    positions[positionIndex++] = c[0];
+	    positions[positionIndex++] = c[1];
+	    positions[positionIndex++] = c[2];
 
-	  barycentrics[barycentricIndex++] = 1;
-	  barycentrics[barycentricIndex++] = 0;
-	  barycentrics[barycentricIndex++] = 0;
-	  barycentrics[barycentricIndex++] = 0;
-	  barycentrics[barycentricIndex++] = 1;
-	  barycentrics[barycentricIndex++] = 0;
-	  barycentrics[barycentricIndex++] = 0;
-	  barycentrics[barycentricIndex++] = 0;
-	  barycentrics[barycentricIndex++] = 1;
-	}
+	    barycentrics[barycentricIndex++] = 1;
+	    barycentrics[barycentricIndex++] = 0;
+	    barycentrics[barycentricIndex++] = 0;
+	    barycentrics[barycentricIndex++] = 0;
+	    barycentrics[barycentricIndex++] = 1;
+	    barycentrics[barycentricIndex++] = 0;
+	    barycentrics[barycentricIndex++] = 0;
+	    barycentrics[barycentricIndex++] = 0;
+	    barycentrics[barycentricIndex++] = 1;
+	  }
   }
 }
