@@ -97,8 +97,8 @@ EMSCRIPTEN_KEEPALIVE void cllideBoxEther(int dims[3], float *potential, int shif
   result[2] = (unsigned int)ceiled;
 } */
 
-EMSCRIPTEN_KEEPALIVE void doMarchingCubes2(int dims[3], float *potential, unsigned char *biomes, unsigned char *heightfield, unsigned char *lightfield, float shift[3], float scale[3], float *positions, float *uvs, float *barycentrics, unsigned int *positionIndex, unsigned int *uvIndex, unsigned int *barycentricIndex, unsigned char *skyLights, unsigned char *torchLights, unsigned int &numOpaquePositions, unsigned int &numTransparentPositions) {
-  marchingCubes2(dims, potential, biomes, heightfield, lightfield, shift, scale, positions, uvs, barycentrics, *positionIndex, *uvIndex, *barycentricIndex, skyLights, torchLights, numOpaquePositions, numTransparentPositions);
+EMSCRIPTEN_KEEPALIVE void doMarchingCubes2(int dims[3], float *potential, unsigned char *biomes, unsigned char *heightfield, unsigned char *lightfield, float shift[3], float scale[3], float *positions, float *normals, float *uvs, float *barycentrics, unsigned int *positionIndex, unsigned int *normalIndex, unsigned int *uvIndex, unsigned int *barycentricIndex, unsigned char *skyLights, unsigned char *torchLights, unsigned int &numOpaquePositions, unsigned int &numTransparentPositions) {
+  marchingCubes2(dims, potential, biomes, heightfield, lightfield, shift, scale, positions, normals, uvs, barycentrics, *positionIndex, *normalIndex, *uvIndex, *barycentricIndex, skyLights, torchLights, numOpaquePositions, numTransparentPositions);
 }
 
 /* EMSCRIPTEN_KEEPALIVE void doNoise2(int seed, double frequency, int octaves, int dims[3], float shifts[3], float offset, float *potential) {

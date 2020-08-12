@@ -644,7 +644,7 @@ inline void setUvs(const std::tuple<float, float> &color, float *uvs, unsigned i
 }
 
 template<bool transparent>
-inline void marchingCubesRaw(int dims[3], std::function<float(int, int, int)> getPotential, std::function<unsigned char(int)> getBiome, unsigned char *heightfield, unsigned char *lightfield, float shift[3], float scale[3], float yLimit, float *positions, float *uvs, float *barycentrics, unsigned int &positionIndex, unsigned int &uvIndex, unsigned int &barycentricIndex, unsigned char *skyLights, unsigned char *torchLights, unsigned int &lightIndex) {
+inline void marchingCubesRaw(int dims[3], std::function<float(int, int, int)> getPotential, std::function<unsigned char(int)> getBiome, unsigned char *heightfield, unsigned char *lightfield, float shift[3], float scale[3], float yLimit, float *positions, float *normals, float *uvs, float *barycentrics, unsigned int &positionIndex, unsigned int &normalIndex, unsigned int &uvIndex, unsigned int &barycentricIndex, unsigned char *skyLights, unsigned char *torchLights, unsigned int &lightIndex) {
   int n = 0;
   float grid[8] = {0};
   std::array<std::array<float, 3>, 12> edges;
@@ -772,6 +772,22 @@ inline void marchingCubesRaw(int dims[3], std::function<float(int, int, int)> ge
       }
       positions[positionIndex++] = c[2];
 
+      Tri tri{
+        Vec{a[0], a[1], a[2]},
+        Vec{b[0], b[1], b[2]},
+        Vec{c[0], c[1], c[2]},
+      };
+      Vec normal = tri.normal();
+      normals[normalIndex++] = normal.x;
+      normals[normalIndex++] = normal.y;
+      normals[normalIndex++] = normal.z;
+      normals[normalIndex++] = normal.x;
+      normals[normalIndex++] = normal.y;
+      normals[normalIndex++] = normal.z;
+      normals[normalIndex++] = normal.x;
+      normals[normalIndex++] = normal.y;
+      normals[normalIndex++] = normal.z;
+
       barycentrics[barycentricIndex++] = 1;
       barycentrics[barycentricIndex++] = 0;
       barycentrics[barycentricIndex++] = 0;
@@ -785,8 +801,9 @@ inline void marchingCubesRaw(int dims[3], std::function<float(int, int, int)> ge
   }
 }
 
-void marchingCubes2(int dims[3], float *potential, unsigned char *biomes, unsigned char *heightfield, unsigned char *lightfield, float shift[3], float scale[3], float *positions, float *uvs, float *barycentrics, unsigned int &positionIndex, unsigned int &uvIndex, unsigned int &barycentricIndex, unsigned char *skyLights, unsigned char *torchLights, unsigned int &numOpaquePositions, unsigned int &numTransparentPositions) {
+void marchingCubes2(int dims[3], float *potential, unsigned char *biomes, unsigned char *heightfield, unsigned char *lightfield, float shift[3], float scale[3], float *positions, float *normals, float *uvs, float *barycentrics, unsigned int &positionIndex, unsigned int &normalIndex, unsigned int &uvIndex, unsigned int &barycentricIndex, unsigned char *skyLights, unsigned char *torchLights, unsigned int &numOpaquePositions, unsigned int &numTransparentPositions) {
   positionIndex = 0;
+  normalIndex = 0;
   uvIndex = 0;
   barycentricIndex = 0;
   numOpaquePositions = 0;
@@ -798,7 +815,7 @@ void marchingCubes2(int dims[3], float *potential, unsigned char *biomes, unsign
     return potential[index];
   }, [&](int index) -> unsigned char {
     return biomes[index];
-  }, heightfield, lightfield, shift, scale, 0.0f, positions, uvs, barycentrics, positionIndex, uvIndex, barycentricIndex, skyLights, torchLights, lightIndex);
+  }, heightfield, lightfield, shift, scale, 0.0f, positions, normals, uvs, barycentrics, positionIndex, normalIndex, uvIndex, barycentricIndex, skyLights, torchLights, lightIndex);
   numOpaquePositions = positionIndex;
 
   marchingCubesRaw<true>(dims, [&](int x, int y, int z) -> float {
@@ -820,6 +837,6 @@ void marchingCubes2(int dims[3], float *potential, unsigned char *biomes, unsign
         return (unsigned char)BIOME::waterOceanFrozen;
       default: return (unsigned char)BIOME::waterOcean;
     }
-  }, heightfield, lightfield, shift, scale, 4.0f, positions, uvs, barycentrics, positionIndex, uvIndex, barycentricIndex, skyLights, torchLights, lightIndex);
+  }, heightfield, lightfield, shift, scale, 4.0f, positions, normals, uvs, barycentrics, positionIndex, normalIndex, uvIndex, barycentricIndex, skyLights, torchLights, lightIndex);
   numTransparentPositions = positionIndex - numOpaquePositions;
 }
