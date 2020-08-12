@@ -753,23 +753,20 @@ inline void marchingCubesRaw(int dims[3], std::function<float(int, int, int)> ge
       std::array<float, 3> &b = edges[f[i+2]];
       std::array<float, 3> &c = edges[f[i+1]];
 
+      if (transparent) {
+        a[1] = std::min(a[1], yLimit);
+        b[1] = std::min(b[1], yLimit);
+        c[1] = std::min(c[1], yLimit);
+      }
+
       positions[positionIndex++] = a[0];
       positions[positionIndex++] = a[1];
-      if (transparent) {
-        positions[positionIndex-1] = std::min(positions[positionIndex-1], yLimit);
-      }
       positions[positionIndex++] = a[2];
       positions[positionIndex++] = b[0];
       positions[positionIndex++] = b[1];
-      if (transparent) {
-        positions[positionIndex-1] = std::min(positions[positionIndex-1], yLimit);
-      }
       positions[positionIndex++] = b[2];
       positions[positionIndex++] = c[0];
       positions[positionIndex++] = c[1];
-      if (transparent) {
-        positions[positionIndex-1] = std::min(positions[positionIndex-1], yLimit);
-      }
       positions[positionIndex++] = c[2];
 
       Tri tri{
