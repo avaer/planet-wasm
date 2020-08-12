@@ -1,5 +1,8 @@
 #include <string>
-#include <unordered_map>
+#include <tuple>
+
+extern std::tuple<float, float> groundColors[];
+extern std::tuple<float, float> groundNormals[];
 
 enum class BIOME : unsigned char {
   biOcean = 0,
