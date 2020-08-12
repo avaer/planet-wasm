@@ -3,6 +3,8 @@
 
 extern std::tuple<float, float> groundColors[];
 extern std::tuple<float, float> groundNormals[];
+extern std::tuple<float, float> groundHeights[];
+extern std::tuple<float, float> groundEmissives[];
 
 enum class BIOME : unsigned char {
   biOcean = 0,
