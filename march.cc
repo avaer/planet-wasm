@@ -642,6 +642,23 @@ inline void setUvs(const std::tuple<float, float> &color, float *uvs, unsigned i
   uvs[uvIndex] = std::get<0>(color);
   uvs[uvIndex+1] = std::get<1>(color);
 }
+inline unsigned char getAo(int x, int y, int z, std::function<float(int, int, int)> getPotential) {
+  unsigned char numOpens = 0;
+  for(int dy = -1; dy <= 1; dy++) {
+    int ay = y + dy;
+    for(int dz = -1; dz <= 1; dz++) {
+      int az = z + dz;
+      for(int dx = -1; dx <= 1; dx++) {
+        int ax = x + dx;
+        float potential = getPotential(ax, ay, az);
+        if (potential > 0) {
+          numOpens++;
+        }
+      }
+    }
+  }
+  return numOpens;
+}
 
 template<bool transparent>
 inline void marchingCubesRaw(int dims[3], std::function<float(int, int, int)> getPotential, std::function<unsigned char(int)> getBiome, unsigned char *heightfield, unsigned char *lightfield, float shift[3], float scale[3], float yLimit, float *positions, float *normals, float *uvs, float *barycentrics, float *aos, unsigned int &positionIndex, unsigned int &normalIndex, unsigned int &uvIndex, unsigned int &barycentricIndex, unsigned int &aoIndex, unsigned char *skyLights, unsigned char *torchLights, unsigned int &lightIndex) {
@@ -649,25 +666,6 @@ inline void marchingCubesRaw(int dims[3], std::function<float(int, int, int)> ge
   float grid[8] = {0};
   std::array<std::array<float, 3>, 12> edges;
   int x[3] = {0};
-
-  std::vector<int> aoFills(dims[0]*dims[1]*dims[2]);
-  {
-    int aoFillIndex = 0;
-    for(int y = 0; y < dims[1]; y++)
-    for(int z = 0; z < dims[2]; z++)
-    for(int x = 0; x < dims[0]; x++) {
-      int numOpens = 0;
-      for(int dy = -1; dy <= 1; dy++)
-      for(int dz = -1; dz <= 1; dz++)
-      for(int dx = -1; dx <= 1; dx++) {
-        float potential = getPotential(x + dx, y + dy, z + dz);
-        if (potential > 0) {
-          numOpens++;
-        }
-      }
-      aoFills[aoFillIndex++] = numOpens;
-    }
-  }
 
   //March over the volume
   for(x[2]=0; x[2]<dims[2]-1; ++x[2], n+=dims[0])
@@ -732,18 +730,18 @@ inline void marchingCubesRaw(int dims[3], std::function<float(int, int, int)> ge
         torchLights[lightIndex] = torchLight;
         lightIndex++;
       }
-      Tri tri(
-        Vec(a[0], a[1], a[2]),
-        Vec(b[0], b[1], b[2]),
-        Vec(c[0], c[1], c[2])
-      );
-      Vec center = tri.midpoint();
-      // Vec normal = tri.normal();
-      // Vec point = center;// - normal;
-      int x = (int)center.x;
-      int y = (int)center.y;
-      int z = (int)center.z;
       {
+        Tri tri(
+          Vec(a[0], a[1], a[2]),
+          Vec(b[0], b[1], b[2]),
+          Vec(c[0], c[1], c[2])
+        );
+        Vec center = tri.midpoint();
+        // Vec normal = tri.normal();
+        // Vec point = center;// - normal;
+        int x = (int)center.x;
+        int y = (int)center.y;
+        int z = (int)center.z;
         // Vec center(std::min({a[0], b[0], c[0]}), std::min({a[1], b[1], c[1]}), std::min({a[2], b[2], c[2]}));
         int biomeIndex = x +
           (z * dims[0]);
@@ -761,13 +759,24 @@ inline void marchingCubesRaw(int dims[3], std::function<float(int, int, int)> ge
         uvIndex += 2;
       }
       {
-        int aoFillIndex = x +
-          z * dims[0] +
-          y * dims[0] * dims[1];
-        unsigned char ao = (unsigned char)aoFills[aoFillIndex];
-        aos[aoIndex++] = ao;
-        aos[aoIndex++] = ao;
-        aos[aoIndex++] = ao;
+        aos[aoIndex++] = getAo(
+          (int)std::round(a[0]),
+          (int)std::round(a[1]),
+          (int)std::round(a[2]),
+          getPotential
+        );
+        aos[aoIndex++] = getAo(
+          (int)std::round(b[0]),
+          (int)std::round(b[1]),
+          (int)std::round(b[2]),
+          getPotential
+        );
+        aos[aoIndex++] = getAo(
+          (int)std::round(c[0]),
+          (int)std::round(c[1]),
+          (int)std::round(c[2]),
+          getPotential
+        );
       }
     }
     for (int i = 0; i < 12; i++) {
