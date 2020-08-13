@@ -651,7 +651,7 @@ inline unsigned char getAo(int x, int y, int z, std::function<float(int, int, in
       for(int dx = -1; dx <= 1; dx++) {
         int ax = x + dx;
         float potential = getPotential(ax, ay, az);
-        if (potential > 0) {
+        if (potential < 0) {
           numOpens++;
         }
       }
