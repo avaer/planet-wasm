@@ -661,7 +661,7 @@ inline unsigned char getAo(int x, int y, int z, std::function<float(int, int, in
 }
 
 template<bool transparent>
-inline void marchingCubesRaw(int dims[3], std::function<float(int, int, int)> getPotential, std::function<unsigned char(int)> getBiome, unsigned char *heightfield, unsigned char *lightfield, float shift[3], float scale[3], float yLimit, float *positions, float *normals, float *uvs, float *barycentrics, float *aos, unsigned int &positionIndex, unsigned int &normalIndex, unsigned int &uvIndex, unsigned int &barycentricIndex, unsigned int &aoIndex, unsigned char *skyLights, unsigned char *torchLights, unsigned int &lightIndex) {
+inline void marchingCubesRaw(int dims[3], std::function<float(int, int, int)> getPotential, std::function<unsigned char(int)> getBiome, unsigned char *heightfield, unsigned char *lightfield, float shift[3], float scale[3], float yLimit, float *positions, float *normals, float *uvs, float *barycentrics, unsigned char *aos, unsigned int &positionIndex, unsigned int &normalIndex, unsigned int &uvIndex, unsigned int &barycentricIndex, unsigned int &aoIndex, unsigned char *skyLights, unsigned char *torchLights, unsigned int &lightIndex) {
   int n = 0;
   float grid[8] = {0};
   std::array<std::array<float, 3>, 12> edges;
@@ -835,7 +835,7 @@ inline void marchingCubesRaw(int dims[3], std::function<float(int, int, int)> ge
   }
 }
 
-void marchingCubes2(int dims[3], float *potential, unsigned char *biomes, unsigned char *heightfield, unsigned char *lightfield, float shift[3], float scale[3], float *positions, float *normals, float *uvs, float *barycentrics, float *aos, unsigned int &positionIndex, unsigned int &normalIndex, unsigned int &uvIndex, unsigned int &barycentricIndex, unsigned int &aoIndex, unsigned char *skyLights, unsigned char *torchLights, unsigned int &numOpaquePositions, unsigned int &numTransparentPositions) {
+void marchingCubes2(int dims[3], float *potential, unsigned char *biomes, unsigned char *heightfield, unsigned char *lightfield, float shift[3], float scale[3], float *positions, float *normals, float *uvs, float *barycentrics, unsigned char *aos, unsigned int &positionIndex, unsigned int &normalIndex, unsigned int &uvIndex, unsigned int &barycentricIndex, unsigned int &aoIndex, unsigned char *skyLights, unsigned char *torchLights, unsigned int &numOpaquePositions, unsigned int &numTransparentPositions) {
   positionIndex = 0;
   normalIndex = 0;
   uvIndex = 0;
