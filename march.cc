@@ -623,10 +623,10 @@ void marchingCubes(int dims[3], float *potential, int shift[3], int indexOffset,
   }
 } */
 
-inline int getPotentialIndex(int x, int y, int z, int dims[3]) {
-  return x +
-    z * dims[0] +
-    y * dims[0] * dims[1];
+inline int getPotentialIndex(int x, int y, int z, int dimsP3[3]) {
+  return (x + 1) +
+    (z + 1) * dimsP3[0] +
+    (y + 1) * dimsP3[0] * dimsP3[1];
 }
 
 inline void setLights(const std::array<float, 3> &v, unsigned char *field, unsigned char *lights, unsigned int lightIndex, int dims[3]) {
@@ -807,18 +807,29 @@ void marchingCubes2(int dims[3], float *potential, unsigned char *biomes, unsign
   numTransparentPositions = 0;
   unsigned int lightIndex = 0;
 
-  marchingCubesRaw<false>(dims, [&](int x, int y, int z) -> float {
-    int index = getPotentialIndex(x, y, z, dims);
+  int dimsP1[3] = {
+    dims[0]+1,
+    dims[1]+1,
+    dims[2]+1,
+  };
+  int dimsP3[3] = {
+    dims[0]+3,
+    dims[1]+3,
+    dims[2]+3,
+  };
+
+  marchingCubesRaw<false>(dimsP1, [&](int x, int y, int z) -> float {
+    int index = getPotentialIndex(x, y, z, dimsP3);
     return potential[index];
   }, [&](int index) -> unsigned char {
     return biomes[index];
   }, heightfield, lightfield, shift, scale, 0.0f, positions, normals, uvs, barycentrics, positionIndex, normalIndex, uvIndex, barycentricIndex, skyLights, torchLights, lightIndex);
   numOpaquePositions = positionIndex;
 
-  marchingCubesRaw<true>(dims, [&](int x, int y, int z) -> float {
+  marchingCubesRaw<true>(dimsP1, [&](int x, int y, int z) -> float {
     int ay = shift[1] + y;
     if (ay < 5) {
-      int index = getPotentialIndex(x, y, z, dims);
+      int index = getPotentialIndex(x, y, z, dimsP3);
       return -potential[index];
     } else {
       return -0.5f;

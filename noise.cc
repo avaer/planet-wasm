@@ -102,7 +102,7 @@ inline float getBiomeHeight(unsigned char b, float x, float z, Noise &elevationN
 }
 
 template <typename T>
-inline void _fillOblateSpheroid(float centerX, float centerY, float centerZ, int minX, int minY, int minZ, int maxX, int maxY, int maxZ, float radius, int *dimsP1, T *ether, std::function<T(T, float)> fn) {
+inline void _fillOblateSpheroid(float centerX, float centerY, float centerZ, int shiftX, int shiftY, int shiftZ, int minX, int minY, int minZ, int maxX, int maxY, int maxZ, float radius, int *dimsP3, T *ether, std::function<T(T, float)> fn) {
   const int radiusCeil = (int)std::ceil(radius);
   for (int z = -radiusCeil; z <= radiusCeil; z++) {
     const float lz = centerZ + z;
@@ -115,9 +115,9 @@ inline void _fillOblateSpheroid(float centerX, float centerY, float centerZ, int
             if (ly >= minY && ly < maxY) {
               const float distance = x*x + 2 * y*y + z*z;
               if (distance < radius*radius) {
-                const int index = std::floor(lx - minX) +
-                  (std::floor(lz - minZ) * dimsP1[0]) +
-                  (std::floor(ly - minY) * dimsP1[0] * dimsP1[1]);
+                const int index = std::floor(lx + shiftX + - minX) +
+                  (std::floor(lz + shiftY - minZ) * dimsP3[0]) +
+                  (std::floor(ly + shiftZ - minY) * dimsP3[0] * dimsP3[1]);
                 ether[index] = fn(ether[index], distance);
               }
             }
@@ -210,7 +210,7 @@ float getHeight(int seed, float ax, float ay, float az, float baseHeight, int li
 }
 
 void noise3(int seed, float baseHeight, int dims[3], float shifts[3], int limits[3], float wormRate, float wormRadiusBase, float wormRadiusRate, float objectsRate, float offset, float *potential, unsigned char *biomes, unsigned char *heightfield, float *objectPositions, float *objectQuaternions, unsigned int *objectTypes, unsigned int &numObjects, unsigned int maxNumObjects) {
-  memset(potential, 0, (dims[0]+1)*(dims[1]+1)*(dims[2]+1)*sizeof(float));
+  memset(potential, 0, (dims[0]+3)*(dims[1]+3)*(dims[2]+3)*sizeof(float));
   memset(biomes, 0, (dims[0]+1)*(dims[2]+1)*sizeof(unsigned char));
   memset(heightfield, 0, dims[0]*dims[1]*dims[2]*sizeof(unsigned char));
   TemperatureHumidityNoise thNoises(seed);
@@ -245,29 +245,36 @@ void noise3(int seed, float baseHeight, int dims[3], float shifts[3], int limits
     dims[1]+1,
     dims[2]+1,
   };
+  int dimsP2[3] = {
+    dims[0]+2,
+    dims[1]+2,
+    dims[2]+2,
+  };
   int dimsP3[3] = {
     dims[0]+3,
     dims[1]+3,
     dims[2]+3,
   };
-  int dimsP11[3] = {
-    dims[0]+11,
-    dims[1]+11,
-    dims[2]+11,
+  int dimsP12[3] = {
+    dims[0]+12,
+    dims[1]+12,
+    dims[2]+12,
   };
 
   std::vector<unsigned char> fills(dimsP3[0]*dimsP3[1]*dimsP3[2]);
-  std::vector<unsigned char> biomesAux;
-  biomesAux.resize(dimsP11[0]*dimsP11[2]);
-  std::fill(biomesAux.begin(), biomesAux.end(), 0xFF);
-  std::vector<float> biomesAuxHeight;
-  biomesAuxHeight.resize(dimsP11[0]*dimsP11[2]);
+  std::vector<unsigned char> biomesAux(dimsP12[0]*dimsP12[2]);
+  std::vector<float> biomesAuxHeight(dimsP12[0]*dimsP12[2]);
   {
     std::array<Noise, 7> &thNoiseRef = thNoises.noises;
     int biomeAuxHeightIndex = 0;
-    for (int dz = -4; dz < dimsP3[2] + 4; dz++) {
-      for (int dx = -4; dx < dimsP3[0] + 4; dx++) {
+    for (int dz = -4 - 1; dz < dimsP3[2] + 4; dz++) {
+      for (int dx = -4 - 1; dx < dimsP3[0] + 4; dx++) {
         int index = biomeAuxHeightIndex++;
+        /* int biomeSrcIndex = (1 + 4 + dx) +
+          (1 + 4 + dz) * dimsP12[0];
+        if (index != biomeSrcIndex) {
+          std::cout << "fail " << index << " " << biomeSrcIndex << std::endl;
+        } */
         unsigned char biome = getBiome(shifts[0] + dx, shifts[2] + dz, thNoiseRef[0], thNoiseRef[1], thNoiseRef[2], thNoiseRef[3]);
         biomesAux[index] = biome;
         float biomeHeight = getBiomeHeight(biome, shifts[0] + dx, shifts[2] + dz, thNoiseRef[4], thNoiseRef[5], thNoiseRef[6]);
@@ -276,13 +283,13 @@ void noise3(int seed, float baseHeight, int dims[3], float shifts[3], int limits
     }
   }
 
-  for (int x = 0; x < dimsP3[0]; x++) {
+  for (int x = -1; x < dimsP3[0]; x++) {
     float ax = shifts[0] + x;
     // float cx = ax - (float)(limits[0])/2.0f;
-    for (int z = 0; z < dimsP3[2]; z++) {
+    for (int z = -1; z < dimsP3[2]; z++) {
       float az = shifts[2] + z;
       // float cz = az - (float)(limits[2])/2.0f;
-      for (int y = 0; y < dimsP3[1]; y++) {
+      for (int y = -1; y < dimsP3[1]; y++) {
         float ay = shifts[1] + y;
         // float cy = ay - (float)(limits[1])/2.0f;
 
@@ -329,37 +336,44 @@ void noise3(int seed, float baseHeight, int dims[3], float shifts[3], int limits
         } */
         std::array<Noise, 7> &thNoiseRef = thNoises.noises;
 
-        int biomeSrcIndex = (x + 4) +
-          (z + 4) * dimsP11[0];
+        int biomeSrcIndex = (x + 1 + 4) +
+          (z + 1 + 4) * dimsP12[0];
         unsigned char biome = biomesAux[biomeSrcIndex];
 
         float totalHeight = 0;
         for (int dz = -4; dz <= 4; dz++) {
           for (int dx = -4; dx <= 4; dx++) {
-            int biomeSrcIndex = (x + 4 + dx) +
-              (z + 4 + dz) * dimsP11[0];
+            int biomeSrcIndex = (x + 1 + 4 + dx) +
+              (z + 1 + 4 + dz) * dimsP12[0];
             float biomeHeight = biomesAuxHeight[biomeSrcIndex];
             totalHeight += biomeHeight;
           }
         }
         float height = totalHeight/(float)((4+1+4)*(4+1+4));
 
-        if (x < dimsP1[0] && y < dimsP1[1] && z < dimsP1[2]) {
-          int index = x +
-            (z * dimsP1[0]) +
-            (y * dimsP1[0] * dimsP1[1]);
-          potential[index] = (w < height) ? -offset : offset;
-          heightfield[index] = (unsigned char)std::min<float>(std::max<float>(8.0f + 0.5f - (height - w), 0.0f), 8.0f);
-
-          int biomeIndex = x +
-            (z * dimsP1[0]);
-          biomes[biomeIndex] = biome;
+        if (x < dimsP2[0] && y < dimsP2[1] && z < dimsP2[2]) {
+          int potentialIndex = (x + 1) +
+            ((z + 1) * dimsP3[0]) +
+            ((y + 1) * dimsP3[0] * dimsP3[1]);
+          potential[potentialIndex] = (w < height) ? -offset : offset;
         }
-        if (w < height) {
-          int fillIndex = x +
-            (z * dimsP3[0]) +
-            (y * dimsP3[0] * dimsP3[1]);
-          fills[fillIndex] = FILL_LOCAL;
+        if (x >= 0 && y >= 0 && z >= 0) {
+          if (x < dimsP1[0] && y < dimsP1[1] && z < dimsP1[2]) {
+            int heightfieldIndex = x +
+              (z * dimsP1[0]) +
+              (y * dimsP1[0] * dimsP1[1]);
+            heightfield[heightfieldIndex] = (unsigned char)std::min<float>(std::max<float>(8.0f + 0.5f - (height - w), 0.0f), 8.0f);
+
+            int biomeIndex = x +
+              (z * dimsP1[0]);
+            biomes[biomeIndex] = biome;
+          }
+          if (w < height) {
+            int fillIndex = x +
+              (z * dimsP3[0]) +
+              (y * dimsP3[0] * dimsP3[1]);
+            fills[fillIndex] = FILL_LOCAL;
+          }
         }
       }
     }
@@ -422,10 +436,10 @@ void noise3(int seed, float baseHeight, int dims[3], float shifts[3], int limits
                 const float centerPosZ = cavePosZ + (caveCenterNoiseZ.in2D(nx, ny) * 4 - 2) * 0.2;
 
                 const float radius = wormRadiusBase + wormRadiusRate * caveRadius * sin(len * PI / caveLength);
-                _fillOblateSpheroid<float>(centerPosX, centerPosY, centerPosZ, ox * dims[0], oy * dims[1], oz * dims[2], (ox + 1) * dims[0] + 1, (oy + 1) * dims[1] + 1, (oz + 1) * dims[2] + 1, radius, dimsP1, potential, [&](float oldVal, float distance) -> float {
+                _fillOblateSpheroid<float>(centerPosX, centerPosY, centerPosZ, 1, 1, 1, ox * dims[0], oy * dims[1], oz * dims[2], (ox + 1) * dims[0] + 1, (oy + 1) * dims[1] + 1, (oz + 1) * dims[2] + 1, radius, dimsP3, potential, [&](float oldVal, float distance) -> float {
                   return oldVal - (1 + ((radius - std::sqrt(distance)) / radius));
                 });
-                _fillOblateSpheroid<unsigned char>(centerPosX, centerPosY, centerPosZ, ox * dims[0], oy * dims[1], oz * dims[2], (ox + 1) * dims[0] + 3, (oy + 1) * dims[1] + 3, (oz + 1) * dims[2] + 3, radius, dimsP3, fills.data(), [&](unsigned char oldVal, float distance) -> float {
+                _fillOblateSpheroid<unsigned char>(centerPosX, centerPosY, centerPosZ, 0, 0, 0, ox * dims[0], oy * dims[1], oz * dims[2], (ox + 1) * dims[0] + 3, (oy + 1) * dims[1] + 3, (oz + 1) * dims[2] + 3, radius, dimsP3, fills.data(), [&](unsigned char oldVal, float distance) -> float {
                   return 0;
                 });
               }
