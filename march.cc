@@ -514,7 +514,7 @@ inline unsigned char getAo(int x, int y, int z, std::function<float(int, int, in
 }
 
 template<bool transparent>
-inline void marchingCubesRaw(int dimsP1[3], std::function<float(int, int, int)> getPotential, std::function<unsigned char(int)> getBiome, unsigned char *heightfield, unsigned char *lightfield, float shift[3], float scale[3], float yLimit, float *positions, float *normals, float *uvs, float *barycentrics, unsigned char *aos, unsigned int &positionIndex, unsigned int &normalIndex, unsigned int &uvIndex, unsigned int &barycentricIndex, unsigned int &aoIndex, unsigned char *skyLights, unsigned char *torchLights, unsigned int &lightIndex) {
+inline void marchingCubesRaw(int dimsP1[3], std::function<float(int, int, int)> getPotential, std::function<unsigned char(int)> getBiome, unsigned char *heightfield, unsigned char *lightfield, float shift[3], float scale[3], float yLimit, float *positions, float *normals, float *uvs, float *barycentrics, unsigned char *aos, unsigned int &positionIndex, unsigned int &normalIndex, unsigned int &uvIndex, unsigned int &barycentricIndex, unsigned int &aoIndex, unsigned char *skyLights, unsigned char *torchLights, unsigned int &lightIndex, unsigned char *peeks) {
   int n = 0;
   float grid[8] = {0};
   std::array<std::array<float, 3>, 12> edges;
@@ -687,7 +687,6 @@ inline void marchingCubesRaw(int dimsP1[3], std::function<float(int, int, int)> 
     }
   }
 
-  unsigned char peeks[6*5];
   std::vector<unsigned char> seenPeeks(dimsP1[0] * dimsP1[1] * dimsP1[2]);
   for (int x = 0; x < dimsP1[0]; x++) {
     for (int y = 0; y < dimsP1[0]; y++) {
@@ -721,7 +720,7 @@ inline void marchingCubesRaw(int dimsP1[3], std::function<float(int, int, int)> 
   }
 }
 
-void marchingCubes2(int dims[3], float *potential, unsigned char *biomes, unsigned char *heightfield, unsigned char *lightfield, float shift[3], float scale[3], float *positions, float *normals, float *uvs, float *barycentrics, unsigned char *aos, unsigned int &positionIndex, unsigned int &normalIndex, unsigned int &uvIndex, unsigned int &barycentricIndex, unsigned int &aoIndex, unsigned char *skyLights, unsigned char *torchLights, unsigned int &numOpaquePositions, unsigned int &numTransparentPositions) {
+void marchingCubes2(int dims[3], float *potential, unsigned char *biomes, unsigned char *heightfield, unsigned char *lightfield, float shift[3], float scale[3], float *positions, float *normals, float *uvs, float *barycentrics, unsigned char *aos, unsigned int &positionIndex, unsigned int &normalIndex, unsigned int &uvIndex, unsigned int &barycentricIndex, unsigned int &aoIndex, unsigned char *skyLights, unsigned char *torchLights, unsigned int &numOpaquePositions, unsigned int &numTransparentPositions, unsigned char *peeks) {
   positionIndex = 0;
   normalIndex = 0;
   uvIndex = 0;
@@ -747,7 +746,7 @@ void marchingCubes2(int dims[3], float *potential, unsigned char *biomes, unsign
     return potential[index];
   }, [&](int index) -> unsigned char {
     return biomes[index];
-  }, heightfield, lightfield, shift, scale, 0.0f, positions, normals, uvs, barycentrics, aos, positionIndex, normalIndex, uvIndex, barycentricIndex, aoIndex, skyLights, torchLights, lightIndex);
+  }, heightfield, lightfield, shift, scale, 0.0f, positions, normals, uvs, barycentrics, aos, positionIndex, normalIndex, uvIndex, barycentricIndex, aoIndex, skyLights, torchLights, lightIndex, peeks);
   numOpaquePositions = positionIndex;
 
   marchingCubesRaw<true>(dimsP1, [&](int x, int y, int z) -> float {
@@ -769,6 +768,6 @@ void marchingCubes2(int dims[3], float *potential, unsigned char *biomes, unsign
         return (unsigned char)BIOME::waterOceanFrozen;
       default: return (unsigned char)BIOME::waterOcean;
     }
-  }, heightfield, lightfield, shift, scale, 4.0f, positions, normals, uvs, barycentrics, aos, positionIndex, normalIndex, uvIndex, barycentricIndex, aoIndex, skyLights, torchLights, lightIndex);
+  }, heightfield, lightfield, shift, scale, 4.0f, positions, normals, uvs, barycentrics, aos, positionIndex, normalIndex, uvIndex, barycentricIndex, aoIndex, skyLights, torchLights, lightIndex, peeks);
   numTransparentPositions = positionIndex - numOpaquePositions;
 }
