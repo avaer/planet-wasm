@@ -408,66 +408,88 @@ int PEEK_FACE_INDICES[] = {255,255,255,255,255,255,255,255,255,255,255,255,255,2
   }
 } */
 
-inline void _floodFill(int x, int y, int z, int startFace, std::function<float(int, int, int)> getPotential, int minX, int maxX, int minY, int maxY, int minZ, int maxZ, unsigned char *peeks, unsigned char *seenPeeks, int dimsP1[3]) {
-  std::vector<int> queue(dimsP1[0] * dimsP1[1] * dimsP1[2] * 3);
-  unsigned int queueEnd = 0;
-
+inline void _floodFill(int x, int y, int z, int startFace, std::function<float(int, int, int)> getPotential, int minX, int minY, int minZ, int maxX, int maxY, int maxZ, unsigned char *peeks, unsigned char *seenPeeks, int dimsP1[3]) {
   const int peekIndex = x +
     z * dimsP1[0] +
     y * dimsP1[0] * dimsP1[1];
-  queue[queueEnd * 3 + 0] = x;
-  queue[queueEnd * 3 + 1] = y;
-  queue[queueEnd * 3 + 2] = z;
-  queueEnd++;
-  seenPeeks[peekIndex] = 1;
+  if (!seenPeeks[peekIndex]) {
+    seenPeeks[peekIndex] = 1;
 
-  for (unsigned int queueStart = 0; queueStart < queueEnd; queueStart++) {
-    const int x = queue[queueStart * 3 + 0];
-    const int y = queue[queueStart * 3 + 1];
-    const int z = queue[queueStart * 3 + 2];
+    std::vector<int> queue(dimsP1[0] * dimsP1[1] * dimsP1[2] * 3);
+    unsigned int queueEnd = 0;
+    queue[queueEnd * 3 + 0] = x;
+    queue[queueEnd * 3 + 1] = y;
+    queue[queueEnd * 3 + 2] = z;
+    queueEnd++;
 
-    if (getPotential(x, y, z) <= 0) { // if empty space
-      if (z == minZ && startFace != (int)PEEK_FACES::BACK) {
-        peeks[PEEK_FACE_INDICES[startFace << 4 | (int)PEEK_FACES::BACK]] = 1;
-      }
-      if (z == maxZ-1 && startFace != (int)PEEK_FACES::FRONT) {
-        peeks[PEEK_FACE_INDICES[startFace << 4 | (int)PEEK_FACES::FRONT]] = 1;
-      }
-      if (x == minX && startFace != (int)PEEK_FACES::LEFT) {
-        peeks[PEEK_FACE_INDICES[startFace << 4 | (int)PEEK_FACES::LEFT]] = 1;
-      }
-      if (x == maxX-1 && startFace != (int)PEEK_FACES::RIGHT) {
-        peeks[PEEK_FACE_INDICES[startFace << 4 | (int)PEEK_FACES::RIGHT]] = 1;
-      }
-      if (y == maxY-1 && startFace != (int)PEEK_FACES::TOP) {
-        peeks[PEEK_FACE_INDICES[startFace << 4 | (int)PEEK_FACES::TOP]] = 1;
-      }
-      if (y == minY && startFace != (int)PEEK_FACES::BOTTOM) {
-        peeks[PEEK_FACE_INDICES[startFace << 4 | (int)PEEK_FACES::BOTTOM]] = 1;
-      }
+    int seenFaces[6+1];
+    memset(seenFaces, 0, sizeof(seenFaces));
+    seenFaces[startFace] = 1;
 
-      for (int dx = -1; dx <= 1; dx++) {
-        const int ax = x + dx;
-        if (ax >= minX && ax < maxX) {
-          for (int dz = -1; dz <= 1; dz++) {
-            const int az = z + dz;
-            if (az >= minZ && az < maxZ) {
-              for (int dy = -1; dy <= 1; dy++) {
-                const int ay = y + dy;
-                if (ay >= minY && ay < maxY) {
-                  const int peekIndex = ax +
-                    az * dimsP1[0] +
-                    ay * dimsP1[0] * dimsP1[1];
-                  if (!seenPeeks[peekIndex]) {
-                    queue[queueEnd * 3 + 0] = ax;
-                    queue[queueEnd * 3 + 1] = ay;
-                    queue[queueEnd * 3 + 2] = az;
-                    queueEnd++;
-                    seenPeeks[peekIndex] = 1;
+    for (unsigned int queueStart = 0; queueStart < queueEnd; queueStart++) {
+      const int x = queue[queueStart * 3 + 0];
+      const int y = queue[queueStart * 3 + 1];
+      const int z = queue[queueStart * 3 + 2];
+
+      if (getPotential(x, y, z) <= 0) { // if empty space
+        if (z == minZ && startFace != (int)PEEK_FACES::BACK) {
+          seenFaces[(int)PEEK_FACES::BACK] = 1;
+          // peeks[PEEK_FACE_INDICES[startFace << 4 | (int)PEEK_FACES::BACK]] = 1;
+        }
+        if (z == maxZ-1 && startFace != (int)PEEK_FACES::FRONT) {
+          seenFaces[(int)PEEK_FACES::FRONT] = 1;
+          // peeks[PEEK_FACE_INDICES[startFace << 4 | (int)PEEK_FACES::FRONT]] = 1;
+        }
+        if (x == minX && startFace != (int)PEEK_FACES::LEFT) {
+          seenFaces[(int)PEEK_FACES::LEFT] = 1;
+          // peeks[PEEK_FACE_INDICES[startFace << 4 | (int)PEEK_FACES::LEFT]] = 1;
+        }
+        if (x == maxX-1 && startFace != (int)PEEK_FACES::RIGHT) {
+          seenFaces[(int)PEEK_FACES::RIGHT] = 1;
+          // peeks[PEEK_FACE_INDICES[startFace << 4 | (int)PEEK_FACES::RIGHT]] = 1;
+        }
+        if (y == maxY-1 && startFace != (int)PEEK_FACES::TOP) {
+          seenFaces[(int)PEEK_FACES::TOP] = 1;
+          // peeks[PEEK_FACE_INDICES[startFace << 4 | (int)PEEK_FACES::TOP]] = 1;
+        }
+        if (y == minY && startFace != (int)PEEK_FACES::BOTTOM) {
+          seenFaces[(int)PEEK_FACES::BOTTOM] = 1;
+          // peeks[PEEK_FACE_INDICES[startFace << 4 | (int)PEEK_FACES::BOTTOM]] = 1;
+        }
+
+        for (int dx = -1; dx <= 1; dx++) {
+          const int ax = x + dx;
+          if (ax >= minX && ax < maxX) {
+            for (int dz = -1; dz <= 1; dz++) {
+              const int az = z + dz;
+              if (az >= minZ && az < maxZ) {
+                for (int dy = -1; dy <= 1; dy++) {
+                  const int ay = y + dy;
+                  if (ay >= minY && ay < maxY) {
+                    const int peekIndex = ax +
+                      az * dimsP1[0] +
+                      ay * dimsP1[0] * dimsP1[1];
+                    if (!seenPeeks[peekIndex]) {
+                      queue[queueEnd * 3 + 0] = ax;
+                      queue[queueEnd * 3 + 1] = ay;
+                      queue[queueEnd * 3 + 2] = az;
+                      queueEnd++;
+                      seenPeeks[peekIndex] = 1;
+                    }
                   }
                 }
               }
             }
+          }
+        }
+      }
+    }
+
+    for (int i = 1; i <= 6; i++) {
+      if (seenFaces[i]) {
+        for (int j = 1; j <= 6; j++) {
+          if (i != j && seenFaces[j]) {
+            peeks[PEEK_FACE_INDICES[i << 4 | j]] = 1;
           }
         }
       }
@@ -687,35 +709,37 @@ inline void marchingCubesRaw(int dimsP1[3], std::function<float(int, int, int)> 
   }
 
   if (!transparent) {
-    std::vector<unsigned char> seenPeeks(dimsP1[0] * dimsP1[1] * dimsP1[2]);
+    memset(peeks, 0, 15);
+    unsigned char seenPeeks[dimsP1[0] * dimsP1[1] * dimsP1[2]];
+    memset(seenPeeks, 0, sizeof(seenPeeks));
     for (int x = 0; x < dimsP1[0]; x++) {
       for (int y = 0; y < dimsP1[0]; y++) {
-        _floodFill(x, y, dimsP1[0]-1, (int)PEEK_FACES::FRONT, getPotential, 0, 0, 0, dimsP1[0], dimsP1[1], dimsP1[2], peeks, seenPeeks.data(), dimsP1);
+        _floodFill(x, y, dimsP1[2]-1, (int)PEEK_FACES::FRONT, getPotential, 0, 0, 0, dimsP1[0], dimsP1[1], dimsP1[2], peeks, seenPeeks, dimsP1);
       }
     }
     for (int x = 0; x < dimsP1[0]; x++) {
       for (int y = 0; y < dimsP1[0]; y++) {
-        _floodFill(0, 0, dimsP1[0]-1, (int)PEEK_FACES::BACK, getPotential, 0, 0, 0, dimsP1[0], dimsP1[1], dimsP1[2], peeks, seenPeeks.data(), dimsP1);
+        _floodFill(x, y, 0, (int)PEEK_FACES::BACK, getPotential, 0, 0, 0, dimsP1[0], dimsP1[1], dimsP1[2], peeks, seenPeeks, dimsP1);
       }
     }
     for (int z = 0; z < dimsP1[0]; z++) {
       for (int y = 0; y < dimsP1[0]; y++) {
-        _floodFill(dimsP1[0]-1, 0, 0, (int)PEEK_FACES::LEFT, getPotential, 0, 0, 0, dimsP1[0], dimsP1[1], dimsP1[2], peeks, seenPeeks.data(), dimsP1);
+        _floodFill(0, y, z, (int)PEEK_FACES::LEFT, getPotential, 0, 0, 0, dimsP1[0], dimsP1[1], dimsP1[2], peeks, seenPeeks, dimsP1);
       }
     }
     for (int z = 0; z < dimsP1[0]; z++) {
       for (int y = 0; y < dimsP1[0]; y++) {
-        _floodFill(dimsP1[0]-1, 0, 0, (int)PEEK_FACES::RIGHT, getPotential, 0, 0, 0, dimsP1[0], dimsP1[1], dimsP1[2], peeks, seenPeeks.data(), dimsP1);
+        _floodFill(dimsP1[0]-1, y, z, (int)PEEK_FACES::RIGHT, getPotential, 0, 0, 0, dimsP1[0], dimsP1[1], dimsP1[2], peeks, seenPeeks, dimsP1);
       }
     }
     for (int x = 0; x < dimsP1[0]; x++) {
       for (int z = 0; z < dimsP1[0]; z++) {
-        _floodFill(0, dimsP1[0]-1, 0, (int)PEEK_FACES::TOP, getPotential, 0, 0, 0, dimsP1[0], dimsP1[1], dimsP1[2], peeks, seenPeeks.data(), dimsP1);
+        _floodFill(x, dimsP1[1]-1, z, (int)PEEK_FACES::TOP, getPotential, 0, 0, 0, dimsP1[0], dimsP1[1], dimsP1[2], peeks, seenPeeks, dimsP1);
       }
     }
     for (int x = 0; x < dimsP1[0]; x++) {
       for (int z = 0; z < dimsP1[0]; z++) {
-        _floodFill(0, dimsP1[0]-1, 0, (int)PEEK_FACES::BOTTOM, getPotential, 0, 0, 0, dimsP1[0], dimsP1[1], dimsP1[2], peeks, seenPeeks.data(), dimsP1);
+        _floodFill(x, 0, z, (int)PEEK_FACES::BOTTOM, getPotential, 0, 0, 0, dimsP1[0], dimsP1[1], dimsP1[2], peeks, seenPeeks, dimsP1);
       }
     }
   }
