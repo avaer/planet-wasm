@@ -661,16 +661,16 @@ inline unsigned char getAo(int x, int y, int z, std::function<float(int, int, in
 }
 
 template<bool transparent>
-inline void marchingCubesRaw(int dims[3], std::function<float(int, int, int)> getPotential, std::function<unsigned char(int)> getBiome, unsigned char *heightfield, unsigned char *lightfield, float shift[3], float scale[3], float yLimit, float *positions, float *normals, float *uvs, float *barycentrics, unsigned char *aos, unsigned int &positionIndex, unsigned int &normalIndex, unsigned int &uvIndex, unsigned int &barycentricIndex, unsigned int &aoIndex, unsigned char *skyLights, unsigned char *torchLights, unsigned int &lightIndex) {
+inline void marchingCubesRaw(int dimsP1[3], std::function<float(int, int, int)> getPotential, std::function<unsigned char(int)> getBiome, unsigned char *heightfield, unsigned char *lightfield, float shift[3], float scale[3], float yLimit, float *positions, float *normals, float *uvs, float *barycentrics, unsigned char *aos, unsigned int &positionIndex, unsigned int &normalIndex, unsigned int &uvIndex, unsigned int &barycentricIndex, unsigned int &aoIndex, unsigned char *skyLights, unsigned char *torchLights, unsigned int &lightIndex) {
   int n = 0;
   float grid[8] = {0};
   std::array<std::array<float, 3>, 12> edges;
   int x[3] = {0};
 
   //March over the volume
-  for(x[2]=0; x[2]<dims[2]-1; ++x[2], n+=dims[0])
-  for(x[1]=0; x[1]<dims[1]-1; ++x[1], ++n)
-  for(x[0]=0; x[0]<dims[0]-1; ++x[0], ++n) {
+  for(x[2]=0; x[2]<dimsP1[2]-1; ++x[2], n+=dimsP1[0])
+  for(x[1]=0; x[1]<dimsP1[1]-1; ++x[1], ++n)
+  for(x[0]=0; x[0]<dimsP1[0]-1; ++x[0], ++n) {
     //For each cell, compute cube mask
     int cube_index = 0;
     for(int i=0; i<8; ++i) {
@@ -708,14 +708,14 @@ inline void marchingCubesRaw(int dims[3], std::function<float(int, int, int)> ge
       std::array<float, 3> &c = edges[f[i+1]];
 
       if (!transparent) {
-        setLights(a, heightfield, skyLights, lightIndex, dims);
-        setLights(a, lightfield, torchLights, lightIndex, dims);
+        setLights(a, heightfield, skyLights, lightIndex, dimsP1);
+        setLights(a, lightfield, torchLights, lightIndex, dimsP1);
         lightIndex++;
-        setLights(b, heightfield, skyLights, lightIndex, dims);
-        setLights(b, lightfield, torchLights, lightIndex, dims);
+        setLights(b, heightfield, skyLights, lightIndex, dimsP1);
+        setLights(b, lightfield, torchLights, lightIndex, dimsP1);
         lightIndex++;
-        setLights(c, heightfield, skyLights, lightIndex, dims);
-        setLights(c, lightfield, torchLights, lightIndex, dims);
+        setLights(c, heightfield, skyLights, lightIndex, dimsP1);
+        setLights(c, lightfield, torchLights, lightIndex, dimsP1);
         lightIndex++;
       } else {
         constexpr float skyLight = 8.0f;
@@ -744,18 +744,18 @@ inline void marchingCubesRaw(int dims[3], std::function<float(int, int, int)> ge
         int z = (int)center.z;
         // Vec center(std::min({a[0], b[0], c[0]}), std::min({a[1], b[1], c[1]}), std::min({a[2], b[2], c[2]}));
         int biomeIndex = x +
-          (z * dims[0]);
+          (z * dimsP1[0]);
         int biome = (int)getBiome(biomeIndex);
         const std::tuple<float, float> &color = groundColors[biome];
 
         setUvs(color, uvs, uvIndex);
-        // setUvs(a, biomes, groundNormals, uvs, uvIndex, dims);
+        // setUvs(a, biomes, groundNormals, uvs, uvIndex, dimsP1);
         uvIndex += 2;
         setUvs(color, uvs, uvIndex);
-        // setUvs(b, biomes, groundNormals, uvs, uvIndex, dims);
+        // setUvs(b, biomes, groundNormals, uvs, uvIndex, dimsP1);
         uvIndex += 2;
         setUvs(color, uvs, uvIndex);
-        // setUvs(c, biomes, groundNormals, uvs, uvIndex, dims);
+        // setUvs(c, biomes, groundNormals, uvs, uvIndex, dimsP1);
         uvIndex += 2;
       }
       {
