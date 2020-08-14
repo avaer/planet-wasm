@@ -611,7 +611,7 @@ void noise3(int seed, float baseHeight, int dims[3], float shifts[3], int limits
             objectQuaternions[i*4+1] = 0;
             objectQuaternions[i*4+2] = 0;
             objectQuaternions[i*4+3] = 1;
-            objectTypes[i] = (unsigned int)std::floor(objectsTypeNoise.in3D(cx + i * 1000.0f, cy + i * 1000.0f, cz + i * 1000.0f) * (float)0xFF);
+            objectTypes[i] = (unsigned int)std::floor(objectsTypeNoise.in3D(cx + i * 1000.0f, cy + i * 1000.0f, cz + i * 1000.0f) * (float)0xFFFFFF);
             i++;
           }
         }
