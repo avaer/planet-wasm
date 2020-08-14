@@ -686,35 +686,37 @@ inline void marchingCubesRaw(int dimsP1[3], std::function<float(int, int, int)> 
     }
   }
 
-  std::vector<unsigned char> seenPeeks(dimsP1[0] * dimsP1[1] * dimsP1[2]);
-  for (int x = 0; x < dimsP1[0]; x++) {
-    for (int y = 0; y < dimsP1[0]; y++) {
-      _floodFill(x, y, dimsP1[0]-1, (int)PEEK_FACES::FRONT, getPotential, 0, 0, 0, dimsP1[0], dimsP1[1], dimsP1[2], peeks, seenPeeks.data(), dimsP1);
+  if (!transparent) {
+    std::vector<unsigned char> seenPeeks(dimsP1[0] * dimsP1[1] * dimsP1[2]);
+    for (int x = 0; x < dimsP1[0]; x++) {
+      for (int y = 0; y < dimsP1[0]; y++) {
+        _floodFill(x, y, dimsP1[0]-1, (int)PEEK_FACES::FRONT, getPotential, 0, 0, 0, dimsP1[0], dimsP1[1], dimsP1[2], peeks, seenPeeks.data(), dimsP1);
+      }
     }
-  }
-  for (int x = 0; x < dimsP1[0]; x++) {
-    for (int y = 0; y < dimsP1[0]; y++) {
-      _floodFill(0, 0, dimsP1[0]-1, (int)PEEK_FACES::BACK, getPotential, 0, 0, 0, dimsP1[0], dimsP1[1], dimsP1[2], peeks, seenPeeks.data(), dimsP1);
+    for (int x = 0; x < dimsP1[0]; x++) {
+      for (int y = 0; y < dimsP1[0]; y++) {
+        _floodFill(0, 0, dimsP1[0]-1, (int)PEEK_FACES::BACK, getPotential, 0, 0, 0, dimsP1[0], dimsP1[1], dimsP1[2], peeks, seenPeeks.data(), dimsP1);
+      }
     }
-  }
-  for (int z = 0; z < dimsP1[0]; z++) {
-    for (int y = 0; y < dimsP1[0]; y++) {
-      _floodFill(dimsP1[0]-1, 0, 0, (int)PEEK_FACES::LEFT, getPotential, 0, 0, 0, dimsP1[0], dimsP1[1], dimsP1[2], peeks, seenPeeks.data(), dimsP1);
-    }
-  }
-  for (int z = 0; z < dimsP1[0]; z++) {
-    for (int y = 0; y < dimsP1[0]; y++) {
-      _floodFill(dimsP1[0]-1, 0, 0, (int)PEEK_FACES::RIGHT, getPotential, 0, 0, 0, dimsP1[0], dimsP1[1], dimsP1[2], peeks, seenPeeks.data(), dimsP1);
-    }
-  }
-  for (int x = 0; x < dimsP1[0]; x++) {
     for (int z = 0; z < dimsP1[0]; z++) {
-      _floodFill(0, dimsP1[0]-1, 0, (int)PEEK_FACES::TOP, getPotential, 0, 0, 0, dimsP1[0], dimsP1[1], dimsP1[2], peeks, seenPeeks.data(), dimsP1);
+      for (int y = 0; y < dimsP1[0]; y++) {
+        _floodFill(dimsP1[0]-1, 0, 0, (int)PEEK_FACES::LEFT, getPotential, 0, 0, 0, dimsP1[0], dimsP1[1], dimsP1[2], peeks, seenPeeks.data(), dimsP1);
+      }
     }
-  }
-  for (int x = 0; x < dimsP1[0]; x++) {
     for (int z = 0; z < dimsP1[0]; z++) {
-      _floodFill(0, dimsP1[0]-1, 0, (int)PEEK_FACES::BOTTOM, getPotential, 0, 0, 0, dimsP1[0], dimsP1[1], dimsP1[2], peeks, seenPeeks.data(), dimsP1);
+      for (int y = 0; y < dimsP1[0]; y++) {
+        _floodFill(dimsP1[0]-1, 0, 0, (int)PEEK_FACES::RIGHT, getPotential, 0, 0, 0, dimsP1[0], dimsP1[1], dimsP1[2], peeks, seenPeeks.data(), dimsP1);
+      }
+    }
+    for (int x = 0; x < dimsP1[0]; x++) {
+      for (int z = 0; z < dimsP1[0]; z++) {
+        _floodFill(0, dimsP1[0]-1, 0, (int)PEEK_FACES::TOP, getPotential, 0, 0, 0, dimsP1[0], dimsP1[1], dimsP1[2], peeks, seenPeeks.data(), dimsP1);
+      }
+    }
+    for (int x = 0; x < dimsP1[0]; x++) {
+      for (int z = 0; z < dimsP1[0]; z++) {
+        _floodFill(0, dimsP1[0]-1, 0, (int)PEEK_FACES::BOTTOM, getPotential, 0, 0, 0, dimsP1[0], dimsP1[1], dimsP1[2], peeks, seenPeeks.data(), dimsP1);
+      }
     }
   }
 }
