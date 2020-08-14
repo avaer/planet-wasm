@@ -320,6 +320,36 @@ int edgeIndex[12][2] = {
   {3,7}
 };
 
+enum class PEEK_FACES : int {
+  FRONT = 0,
+  BACK,
+  LEFT,
+  RIGHT,
+  TOP,
+  BOTTOM,
+  NONE
+};
+int PEEK_FACE_INDICES[] = {255, 0, 1, 2, 3, 4, 255, 255, 0, 255, 5, 6, 7, 8, 255, 255, 1, 5, 255, 9, 10, 11, 255, 255, 2, 6, 9, 255, 12, 13, 255, 255, 3, 7, 10, 12, 255, 14, 255, 255, 4, 8, 11, 13, 14, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255};
+/* (() => {
+  const PEEK_FACE_INDICES = Array(8 * 8);
+
+  for (let i = 0; i < 8 * 8; i++) {
+    PEEK_FACE_INDICES[i] = 0xFF;
+  }
+
+  let peekIndex = 0;
+  for (let i = 0; i < 6; i++) {
+    for (let j = 0; j < 6; j++) {
+      if (i != j) {
+        const otherEntry = PEEK_FACE_INDICES[j << 3 | i];
+        PEEK_FACE_INDICES[i << 3 | j] = otherEntry != 0xFF ? otherEntry : peekIndex++;
+      }
+    }
+  }
+
+  return PEEK_FACE_INDICES;
+})(); */
+
 void marchingCubes(int dims[3], float *potential, int shift[3], int indexOffset, float *positions, unsigned int *faces, unsigned int &positionIndex, unsigned int &faceIndex) {
   positionIndex = 0;
   faceIndex = 0;
@@ -379,249 +409,72 @@ void marchingCubes(int dims[3], float *potential, int shift[3], int indexOffset,
   }
 }
 
-/* void collideBoxEther(int dims[3], float *potential, int shift[3], float *positionSpec, bool &collided, bool &floored, bool &ceiled) {
-  float positions[8 * 1024];
-  unsigned int indices[8 * 1024];
-  unsigned int numPositions;
-  unsigned int numIndices;
+inline void _floodFill(int x, int y, int z, int startFace, std::function<float(int, int, int)> getPotential, int minX, int maxX, int minY, int maxY, int minZ, int maxZ, unsigned char *peeks, unsigned char *seenPeeks, int dimsP1[3]) {
+  std::vector<int> queue(dimsP1[0] * dimsP1[1] * dimsP1[2] * 3);
+  unsigned int queueEnd = 0;
 
-  marchingCubes(dims, potential, shift, 0, positions, indices, numPositions, numIndices);
+  const int peekIndex = x +
+    z * dimsP1[0] +
+    y * dimsP1[0] * dimsP1[1];
+  queue[queueEnd * 3 + 0] = x;
+  queue[queueEnd * 3 + 1] = y;
+  queue[queueEnd * 3 + 2] = z;
+  queueEnd++;
+  seenPeeks[peekIndex] = 1;
 
-  std::vector<Tri> triangles;
-  triangles.reserve(numIndices / 3);
-  for (unsigned int i = 0; i < numIndices; i += 3) {
-    Tri t(
-      Vec(positions[indices[i + 0] * 3 + 0], positions[indices[i + 0] * 3 + 1], positions[indices[i + 0] * 3 + 2]),
-      Vec(positions[indices[i + 1] * 3 + 0], positions[indices[i + 1] * 3 + 1], positions[indices[i + 1] * 3 + 2]),
-      Vec(positions[indices[i + 2] * 3 + 0], positions[indices[i + 2] * 3 + 1], positions[indices[i + 2] * 3 + 2])
-    );
-    triangles.push_back(t);
-  }
+  for (unsigned int queueStart = 0; queueStart < queueEnd; queueStart++) {
+    const int x = queue[queueStart * 3 + 0];
+    const int y = queue[queueStart * 3 + 1];
+    const int z = queue[queueStart * 3 + 2];
 
-  Vec position(positionSpec[0], positionSpec[1], positionSpec[2]);
+    if (getPotential(x, y, z) <= 0) { // if empty space
+      if (z == minZ && startFace != (int)PEEK_FACES::BACK) {
+        peeks[PEEK_FACE_INDICES[startFace << 3 | (int)PEEK_FACES::BACK]] = 1;
+      }
+      if (z == maxZ-1 && startFace != (int)PEEK_FACES::FRONT) {
+        peeks[PEEK_FACE_INDICES[startFace << 3 | (int)PEEK_FACES::FRONT]] = 1;
+      }
+      if (x == minX && startFace != (int)PEEK_FACES::LEFT) {
+        peeks[PEEK_FACE_INDICES[startFace << 3 | (int)PEEK_FACES::LEFT]] = 1;
+      }
+      if (x == maxX-1 && startFace != (int)PEEK_FACES::RIGHT) {
+        peeks[PEEK_FACE_INDICES[startFace << 3 | (int)PEEK_FACES::RIGHT]] = 1;
+      }
+      if (y == maxY-1 && startFace != (int)PEEK_FACES::TOP) {
+        peeks[PEEK_FACE_INDICES[startFace << 3 | (int)PEEK_FACES::TOP]] = 1;
+      }
+      if (y == minY && startFace != (int)PEEK_FACES::BOTTOM) {
+        peeks[PEEK_FACE_INDICES[startFace << 3 | (int)PEEK_FACES::BOTTOM]] = 1;
+      }
 
-  collided = false;
-  floored = false;
-  ceiled = false;
-
-  // horizontal
-  {
-    for (int dy = 1; dy <= 2; dy++) {
-      // back-front
-      Vec maxRestitutionVector;
-      float maxRestitutionVectorSize = 0;
       for (int dx = -1; dx <= 1; dx++) {
-        const Ray ray(Vec(position.x + dx * 0.5, position.y + 0.4 - 2.0 + dy, position.z), Vec(0, 0, 1));
-        for (const Tri &triangle : triangles) {
-          Vec intersectionVector;
-          if (ray.intersectTriangle(triangle, intersectionVector)) {
-            float restitutionVectorSize = intersectionVector.z - position.z;
-            if (restitutionVectorSize > 0 && restitutionVectorSize <= 0.5 && restitutionVectorSize > maxRestitutionVectorSize) {
-              maxRestitutionVector = Vec(0, 0, -(0.5 - restitutionVectorSize));
-              maxRestitutionVectorSize = restitutionVectorSize;
+        const int ax = x + dx;
+        if (ax >= minX && ax < maxX) {
+          for (int dz = -1; dz <= 1; dz++) {
+            const int az = z + dz;
+            if (az >= minZ && az < maxZ) {
+              for (int dy = -1; dy <= 1; dy++) {
+                const int ay = y + dy;
+                if (ay >= minY && ay < maxY) {
+                  const int peekIndex = ax +
+                    az * dimsP1[0] +
+                    ay * dimsP1[0] * dimsP1[1];
+                  if (!seenPeeks[peekIndex]) {
+                    queue[queueEnd * 3 + 0] = ax;
+                    queue[queueEnd * 3 + 1] = ay;
+                    queue[queueEnd * 3 + 2] = az;
+                    queueEnd++;
+                    seenPeeks[peekIndex] = 1;
+                  }
+                }
+              }
             }
           }
         }
       }
-
-      // front-back
-      for (int dx = -1; dx <= 1; dx++) {
-        const Ray ray(Vec(position.x + dx * 0.5, position.y + 0.4 - 2.0 + dy, position.z), Vec(0, 0, -1));
-        for (const Tri &triangle : triangles) {
-          Vec intersectionVector;
-          if (ray.intersectTriangle(triangle, intersectionVector)) {
-            float restitutionVectorSize = position.z - intersectionVector.z;
-            if (restitutionVectorSize > 0 && restitutionVectorSize <= 0.5 && restitutionVectorSize > maxRestitutionVectorSize) {
-              maxRestitutionVector = Vec(0, 0, 0.5 - restitutionVectorSize);
-              maxRestitutionVectorSize = restitutionVectorSize;
-            }
-          }
-        }
-      }
-
-      // left-right
-      Vec maxRestitutionVector2;
-      float maxRestitutionVectorSize2 = 0;
-      for (int dz = -1; dz <= 1; dz++) {
-        const Ray ray(Vec(position.x, position.y + 0.4 - 2.0 + dy, position.z + dz * 0.5), Vec(1, 0, 0));
-        for (const Tri &triangle : triangles) {
-          Vec intersectionVector;
-          if (ray.intersectTriangle(triangle, intersectionVector)) {
-            float restitutionVectorSize = intersectionVector.x - position.x;
-            if (restitutionVectorSize > 0 && restitutionVectorSize <= 0.5 && restitutionVectorSize > maxRestitutionVectorSize2) {
-              maxRestitutionVector2 = Vec(-(0.5 - restitutionVectorSize), 0, 0);
-              maxRestitutionVectorSize2 = restitutionVectorSize;
-            }
-          }
-        }
-      }
-
-      // right-left
-      for (int dz = -1; dz <= 1; dz++) {
-        const Ray ray(Vec(position.x, position.y + 0.4 - 2.0 + dy, position.z + dz * 0.5), Vec(-1, 0, 0));
-        for (const Tri &triangle : triangles) {
-          Vec intersectionVector;
-          if (ray.intersectTriangle(triangle, intersectionVector)) {
-            float restitutionVectorSize = position.x - intersectionVector.x;
-            if (restitutionVectorSize > 0 && restitutionVectorSize <= 0.5 && restitutionVectorSize > maxRestitutionVectorSize2) {
-              maxRestitutionVector2 = Vec(0.5 - restitutionVectorSize, 0, 0);
-              maxRestitutionVectorSize2 = restitutionVectorSize;
-            }
-          }
-        }
-      }
-
-      if (maxRestitutionVectorSize > 0.0) {
-        position += maxRestitutionVector;
-        collided = true;
-        ceiled = true;
-      }
-      if (maxRestitutionVectorSize2 > 0.0) {
-        position += maxRestitutionVector2;
-        collided = true;
-        ceiled = true;
-      }
     }
   }
-  // up
-  {
-    const Ray topLeftRay(Vec(position.x - 0.5, position.y + 0.4 - 1, position.z - 0.5), Vec(0, 1, 0));
-    const Ray topRightRay(Vec(position.x + 0.5, position.y + 0.4 - 1, position.z - 0.5), Vec(0, 1, 0));
-    const Ray bottomLeftRay(Vec(position.x - 0.5, position.y + 0.4 - 1, position.z + 0.5), Vec(0, 1, 0));
-    const Ray bottomRightRay(Vec(position.x + 0.5, position.y + 0.4 - 1, position.z + 0.5), Vec(0, 1, 0));
-    const Ray middleRay(Vec(position.x, position.y + 0.4, position.z), Vec(0, -1, 0));
-
-    // find max restitution vector
-    Vec maxRestitutionVector;
-    float maxRestitutionVectorSize = 0;
-    for (const Tri &triangle : triangles) {
-      Vec intersectionVector;
-      if (topLeftRay.intersectTriangle(triangle, intersectionVector)) {
-        const float restitutionVectorSize = (position.y + 0.4) - intersectionVector.y;
-        if (restitutionVectorSize < 1) {
-          if (restitutionVectorSize > maxRestitutionVectorSize) {
-            maxRestitutionVector = Vec(0, -restitutionVectorSize, 0);
-            maxRestitutionVectorSize = restitutionVectorSize;
-          }
-        }
-      }
-      if (topRightRay.intersectTriangle(triangle, intersectionVector)) {
-        const float restitutionVectorSize = (position.y + 0.4) - intersectionVector.y;
-        if (restitutionVectorSize < 1) {
-          if (restitutionVectorSize > maxRestitutionVectorSize) {
-            maxRestitutionVector = Vec(0, -restitutionVectorSize, 0);
-            maxRestitutionVectorSize = restitutionVectorSize;
-          }
-        }
-      }
-      if (bottomLeftRay.intersectTriangle(triangle, intersectionVector)) {
-        const float restitutionVectorSize = (position.y + 0.4) - intersectionVector.y;
-        if (restitutionVectorSize < 1) {
-          if (restitutionVectorSize > maxRestitutionVectorSize) {
-            maxRestitutionVector = Vec(0, -restitutionVectorSize, 0);
-            maxRestitutionVectorSize = restitutionVectorSize;
-          }
-        }
-      }
-      if (bottomRightRay.intersectTriangle(triangle, intersectionVector)) {
-        const float restitutionVectorSize = (position.y + 0.4) - intersectionVector.y;
-        if (restitutionVectorSize < 1) {
-          if (restitutionVectorSize > maxRestitutionVectorSize) {
-            maxRestitutionVector = Vec(0, -restitutionVectorSize, 0);
-            maxRestitutionVectorSize = restitutionVectorSize;
-          }
-        }
-      }
-      if (middleRay.intersectTriangle(triangle, intersectionVector)) {
-        const float restitutionVectorSize = (position.y + 0.4) - intersectionVector.y;
-        if (restitutionVectorSize < 1) {
-          if (restitutionVectorSize > maxRestitutionVectorSize) {
-            maxRestitutionVector = Vec(0, -restitutionVectorSize, 0);
-            maxRestitutionVectorSize = restitutionVectorSize;
-          }
-        }
-      }
-    }
-    if (maxRestitutionVectorSize > 0.0) {
-      collided = true;
-      ceiled = true;
-
-      position += maxRestitutionVector;
-    }
-  }
-  // down
-  {
-    const Ray topLeftRay(Vec(position.x - 0.5, position.y + 0.4 - 1, position.z - 0.5), Vec(0, -1, 0));
-    const Ray topRightRay(Vec(position.x + 0.5, position.y + 0.4 - 1, position.z - 0.5), Vec(0, -1, 0));
-    const Ray bottomLeftRay(Vec(position.x - 0.5, position.y + 0.4 - 1, position.z + 0.5), Vec(0, -1, 0));
-    const Ray bottomRightRay(Vec(position.x + 0.5, position.y + 0.4 - 1, position.z + 0.5), Vec(0, -1, 0));
-    const Ray middleRay(Vec(position.x, position.y + 0.4, position.z), Vec(0, -1, 0));
-
-    // find max restitution vector
-    Vec maxRestitutionVector;
-    float maxRestitutionVectorSize = 0;
-    for (const Tri &triangle : triangles) {
-      Vec intersectionVector;
-      if (topLeftRay.intersectTriangle(triangle, intersectionVector)) {
-        const float restitutionVectorSize = intersectionVector.y - (position.y + 0.4 - 2);
-        if (restitutionVectorSize < 1) {
-          if (restitutionVectorSize > maxRestitutionVectorSize) {
-            maxRestitutionVector = Vec(0, restitutionVectorSize, 0);
-            maxRestitutionVectorSize = restitutionVectorSize;
-          }
-        }
-      }
-      if (topRightRay.intersectTriangle(triangle, intersectionVector)) {
-        const float restitutionVectorSize = intersectionVector.y - (position.y + 0.4 - 2);
-        if (restitutionVectorSize < 1) {
-          if (restitutionVectorSize > maxRestitutionVectorSize) {
-            maxRestitutionVector = Vec(0, restitutionVectorSize, 0);
-            maxRestitutionVectorSize = restitutionVectorSize;
-          }
-        }
-      }
-      if (bottomLeftRay.intersectTriangle(triangle, intersectionVector)) {
-        const float restitutionVectorSize = intersectionVector.y - (position.y + 0.4 - 2);
-        if (restitutionVectorSize < 1) {
-          if (restitutionVectorSize > maxRestitutionVectorSize) {
-            maxRestitutionVector = Vec(0, restitutionVectorSize, 0);
-            maxRestitutionVectorSize = restitutionVectorSize;
-          }
-        }
-      }
-      if (bottomRightRay.intersectTriangle(triangle, intersectionVector)) {
-        const float restitutionVectorSize = intersectionVector.y - (position.y + 0.4 - 2);
-        if (restitutionVectorSize < 1) {
-          if (restitutionVectorSize > maxRestitutionVectorSize) {
-            maxRestitutionVector = Vec(0, restitutionVectorSize, 0);
-            maxRestitutionVectorSize = restitutionVectorSize;
-          }
-        }
-      }
-      if (middleRay.intersectTriangle(triangle, intersectionVector)) {
-        const float restitutionVectorSize = intersectionVector.y - (middleRay.origin.y + 0.4 - 2);
-        if (restitutionVectorSize < 1) {
-          if (restitutionVectorSize > maxRestitutionVectorSize) {
-            maxRestitutionVector = Vec(0, restitutionVectorSize, 0);
-            maxRestitutionVectorSize = restitutionVectorSize;
-          }
-        }
-      }
-    }
-    if (maxRestitutionVectorSize > 0.0) {
-      collided = true;
-      floored = true;
-
-      position += maxRestitutionVector;
-    }
-  }
-
-  if (collided) {
-    positionSpec[0] = position.x;
-    positionSpec[1] = position.y;
-    positionSpec[2] = position.z;
-  }
-} */
+}
 
 inline int getPotentialIndex(int x, int y, int z, int dimsP3[3]) {
   return (x + 1) +
@@ -831,6 +684,39 @@ inline void marchingCubesRaw(int dimsP1[3], std::function<float(int, int, int)> 
       barycentrics[barycentricIndex++] = 0;
       barycentrics[barycentricIndex++] = 0;
       barycentrics[barycentricIndex++] = 1;
+    }
+  }
+
+  unsigned char peeks[6*5];
+  std::vector<unsigned char> seenPeeks(dimsP1[0] * dimsP1[1] * dimsP1[2]);
+  for (int x = 0; x < dimsP1[0]; x++) {
+    for (int y = 0; y < dimsP1[0]; y++) {
+      _floodFill(x, y, dimsP1[0]-1, (int)PEEK_FACES::FRONT, getPotential, 0, 0, 0, dimsP1[0], dimsP1[1], dimsP1[2], peeks, seenPeeks.data(), dimsP1);
+    }
+  }
+  for (int x = 0; x < dimsP1[0]; x++) {
+    for (int y = 0; y < dimsP1[0]; y++) {
+      _floodFill(0, 0, dimsP1[0]-1, (int)PEEK_FACES::BACK, getPotential, 0, 0, 0, dimsP1[0], dimsP1[1], dimsP1[2], peeks, seenPeeks.data(), dimsP1);
+    }
+  }
+  for (int z = 0; z < dimsP1[0]; z++) {
+    for (int y = 0; y < dimsP1[0]; y++) {
+      _floodFill(dimsP1[0]-1, 0, 0, (int)PEEK_FACES::LEFT, getPotential, 0, 0, 0, dimsP1[0], dimsP1[1], dimsP1[2], peeks, seenPeeks.data(), dimsP1);
+    }
+  }
+  for (int z = 0; z < dimsP1[0]; z++) {
+    for (int y = 0; y < dimsP1[0]; y++) {
+      _floodFill(dimsP1[0]-1, 0, 0, (int)PEEK_FACES::RIGHT, getPotential, 0, 0, 0, dimsP1[0], dimsP1[1], dimsP1[2], peeks, seenPeeks.data(), dimsP1);
+    }
+  }
+  for (int x = 0; x < dimsP1[0]; x++) {
+    for (int z = 0; z < dimsP1[0]; z++) {
+      _floodFill(0, dimsP1[0]-1, 0, (int)PEEK_FACES::TOP, getPotential, 0, 0, 0, dimsP1[0], dimsP1[1], dimsP1[2], peeks, seenPeeks.data(), dimsP1);
+    }
+  }
+  for (int x = 0; x < dimsP1[0]; x++) {
+    for (int z = 0; z < dimsP1[0]; z++) {
+      _floodFill(0, dimsP1[0]-1, 0, (int)PEEK_FACES::BOTTOM, getPotential, 0, 0, 0, dimsP1[0], dimsP1[1], dimsP1[2], peeks, seenPeeks.data(), dimsP1);
     }
   }
 }
