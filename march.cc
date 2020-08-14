@@ -321,19 +321,18 @@ int edgeIndex[12][2] = {
 };
 
 enum class PEEK_FACES : int {
-  FRONT = 0,
+  FRONT = 1,
   BACK,
   LEFT,
   RIGHT,
   TOP,
   BOTTOM,
-  NONE
 };
-int PEEK_FACE_INDICES[] = {255, 0, 1, 2, 3, 4, 255, 255, 0, 255, 5, 6, 7, 8, 255, 255, 1, 5, 255, 9, 10, 11, 255, 255, 2, 6, 9, 255, 12, 13, 255, 255, 3, 7, 10, 12, 255, 14, 255, 255, 4, 8, 11, 13, 14, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255};
+int PEEK_FACE_INDICES[] = {255, 0, 1, 2, 3, 4, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 0, 255, 5, 6, 7, 8, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 1, 5, 255, 9, 10, 11, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 2, 6, 9, 255, 12, 13, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 3, 7, 10, 12, 255, 14, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 4, 8, 11, 13, 14};
 /* (() => {
-  const PEEK_FACE_INDICES = Array(8 * 8);
+  const PEEK_FACE_INDICES = Array(5<<4|5);
 
-  for (let i = 0; i < 8 * 8; i++) {
+  for (let i = 0; i < (5<<4|5); i++) {
     PEEK_FACE_INDICES[i] = 0xFF;
   }
 
@@ -341,8 +340,8 @@ int PEEK_FACE_INDICES[] = {255, 0, 1, 2, 3, 4, 255, 255, 0, 255, 5, 6, 7, 8, 255
   for (let i = 0; i < 6; i++) {
     for (let j = 0; j < 6; j++) {
       if (i != j) {
-        const otherEntry = PEEK_FACE_INDICES[j << 3 | i];
-        PEEK_FACE_INDICES[i << 3 | j] = otherEntry != 0xFF ? otherEntry : peekIndex++;
+        const otherEntry = PEEK_FACE_INDICES[j << 4 | i];
+        PEEK_FACE_INDICES[i << 4 | j] = otherEntry != 0xFF ? otherEntry : peekIndex++;
       }
     }
   }
@@ -429,22 +428,22 @@ inline void _floodFill(int x, int y, int z, int startFace, std::function<float(i
 
     if (getPotential(x, y, z) <= 0) { // if empty space
       if (z == minZ && startFace != (int)PEEK_FACES::BACK) {
-        peeks[PEEK_FACE_INDICES[startFace << 3 | (int)PEEK_FACES::BACK]] = 1;
+        peeks[PEEK_FACE_INDICES[startFace << 4 | (int)PEEK_FACES::BACK]] = 1;
       }
       if (z == maxZ-1 && startFace != (int)PEEK_FACES::FRONT) {
-        peeks[PEEK_FACE_INDICES[startFace << 3 | (int)PEEK_FACES::FRONT]] = 1;
+        peeks[PEEK_FACE_INDICES[startFace << 4 | (int)PEEK_FACES::FRONT]] = 1;
       }
       if (x == minX && startFace != (int)PEEK_FACES::LEFT) {
-        peeks[PEEK_FACE_INDICES[startFace << 3 | (int)PEEK_FACES::LEFT]] = 1;
+        peeks[PEEK_FACE_INDICES[startFace << 4 | (int)PEEK_FACES::LEFT]] = 1;
       }
       if (x == maxX-1 && startFace != (int)PEEK_FACES::RIGHT) {
-        peeks[PEEK_FACE_INDICES[startFace << 3 | (int)PEEK_FACES::RIGHT]] = 1;
+        peeks[PEEK_FACE_INDICES[startFace << 4 | (int)PEEK_FACES::RIGHT]] = 1;
       }
       if (y == maxY-1 && startFace != (int)PEEK_FACES::TOP) {
-        peeks[PEEK_FACE_INDICES[startFace << 3 | (int)PEEK_FACES::TOP]] = 1;
+        peeks[PEEK_FACE_INDICES[startFace << 4 | (int)PEEK_FACES::TOP]] = 1;
       }
       if (y == minY && startFace != (int)PEEK_FACES::BOTTOM) {
-        peeks[PEEK_FACE_INDICES[startFace << 3 | (int)PEEK_FACES::BOTTOM]] = 1;
+        peeks[PEEK_FACE_INDICES[startFace << 4 | (int)PEEK_FACES::BOTTOM]] = 1;
       }
 
       for (int dx = -1; dx <= 1; dx++) {
