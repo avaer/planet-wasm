@@ -350,7 +350,7 @@ int PEEK_FACE_INDICES[] = {255, 0, 1, 2, 3, 4, 255, 255, 0, 255, 5, 6, 7, 8, 255
   return PEEK_FACE_INDICES;
 })(); */
 
-void marchingCubes(int dims[3], float *potential, int shift[3], int indexOffset, float *positions, unsigned int *faces, unsigned int &positionIndex, unsigned int &faceIndex) {
+/* void marchingCubes(int dims[3], float *potential, int shift[3], int indexOffset, float *positions, unsigned int *faces, unsigned int &positionIndex, unsigned int &faceIndex) {
   positionIndex = 0;
   faceIndex = 0;
 
@@ -407,7 +407,7 @@ void marchingCubes(int dims[3], float *potential, int shift[3], int indexOffset,
       faceIndex += 3;
     }
   }
-}
+} */
 
 inline void _floodFill(int x, int y, int z, int startFace, std::function<float(int, int, int)> getPotential, int minX, int maxX, int minY, int maxY, int minZ, int maxZ, unsigned char *peeks, unsigned char *seenPeeks, int dimsP1[3]) {
   std::vector<int> queue(dimsP1[0] * dimsP1[1] * dimsP1[2] * 3);
