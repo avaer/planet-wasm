@@ -517,15 +517,18 @@ inline int getPotentialIndex(int x, int y, int z, int dimsP3[3]) {
     (z + 1) * dimsP3[0] +
     (y + 1) * dimsP3[0] * dimsP3[1];
 }
+inline char maxChar(char a, char b) {
+  return a >= b ? a : b;
+}
 
-inline void setLights(const std::array<float, 3> &v, unsigned char *field, unsigned char *lights, unsigned int lightIndex, int dims[3]) {
+inline void setLights(const std::array<float, 3> &v, std::function<unsigned char(int)> getField, unsigned char *lights, unsigned int lightIndex, int dims[3]) {
   int x = (int)std::floor(v[0]);
   int y = (int)std::floor(v[1]);
   int z = (int)std::floor(v[2]);
   int index = x +
     (z * dims[0]) +
     (y * dims[0] * dims[1]);
-  lights[lightIndex] = field[index];
+  lights[lightIndex] = getField(index);
 }
 inline void setUvs(const std::tuple<float, float> &color, float *uvs, unsigned int uvIndex) {
   uvs[uvIndex] = std::get<0>(color);
@@ -550,7 +553,7 @@ inline unsigned char getAo(int x, int y, int z, std::function<float(int, int, in
 }
 
 template<bool transparent>
-inline void marchingCubesRaw(int dimsP1[3], std::function<float(int, int, int)> getPotential, std::function<unsigned char(int)> getBiome, unsigned char *heightfield, unsigned char *lightfield, float shift[3], float scale[3], float yLimit, float *positions, float *normals, float *uvs, float *barycentrics, unsigned char *aos, unsigned int &positionIndex, unsigned int &normalIndex, unsigned int &uvIndex, unsigned int &barycentricIndex, unsigned int &aoIndex, unsigned char *skyLights, unsigned char *torchLights, unsigned int &lightIndex, unsigned char *peeks) {
+inline void marchingCubesRaw(int dimsP1[3], std::function<float(int, int, int)> getPotential, std::function<unsigned char(int)> getBiome, char *heightfield, unsigned char *lightfield, float shift[3], float scale[3], float yLimit, float *positions, float *normals, float *uvs, float *barycentrics, unsigned char *aos, unsigned int &positionIndex, unsigned int &normalIndex, unsigned int &uvIndex, unsigned int &barycentricIndex, unsigned int &aoIndex, unsigned char *skyLights, unsigned char *torchLights, unsigned int &lightIndex, unsigned char *peeks) {
   int n = 0;
   float grid[8] = {0};
   std::array<std::array<float, 3>, 12> edges;
@@ -597,14 +600,14 @@ inline void marchingCubesRaw(int dimsP1[3], std::function<float(int, int, int)> 
       std::array<float, 3> &c = edges[f[i+1]];
 
       if (!transparent) {
-        setLights(a, heightfield, skyLights, lightIndex, dimsP1);
-        setLights(a, lightfield, torchLights, lightIndex, dimsP1);
+        setLights(a, [&](int index) -> unsigned char { return (unsigned char)maxChar(heightfield[index], 0); }, skyLights, lightIndex, dimsP1);
+        setLights(a, [&](int index) -> unsigned char { return lightfield[index]; }, torchLights, lightIndex, dimsP1);
         lightIndex++;
-        setLights(b, heightfield, skyLights, lightIndex, dimsP1);
-        setLights(b, lightfield, torchLights, lightIndex, dimsP1);
+        setLights(b, [&](int index) -> unsigned char { return (unsigned char)maxChar(heightfield[index], 0); }, skyLights, lightIndex, dimsP1);
+        setLights(b, [&](int index) -> unsigned char { return lightfield[index]; }, torchLights, lightIndex, dimsP1);
         lightIndex++;
-        setLights(c, heightfield, skyLights, lightIndex, dimsP1);
-        setLights(c, lightfield, torchLights, lightIndex, dimsP1);
+        setLights(c, [&](int index) -> unsigned char { return (unsigned char)maxChar(heightfield[index], 0); }, skyLights, lightIndex, dimsP1);
+        setLights(c, [&](int index) -> unsigned char { return lightfield[index]; }, torchLights, lightIndex, dimsP1);
         lightIndex++;
       } else {
         constexpr float skyLight = 8.0f;
@@ -760,7 +763,7 @@ inline void marchingCubesRaw(int dimsP1[3], std::function<float(int, int, int)> 
   }
 }
 
-void marchingCubes2(int dims[3], float *potential, unsigned char *biomes, unsigned char *heightfield, unsigned char *lightfield, float shift[3], float scale[3], float *positions, float *normals, float *uvs, float *barycentrics, unsigned char *aos, unsigned int &positionIndex, unsigned int &normalIndex, unsigned int &uvIndex, unsigned int &barycentricIndex, unsigned int &aoIndex, unsigned char *skyLights, unsigned char *torchLights, unsigned int &numOpaquePositions, unsigned int &numTransparentPositions, unsigned char *peeks) {
+void marchingCubes2(int dims[3], float *potential, unsigned char *biomes, char *heightfield, unsigned char *lightfield, float shift[3], float scale[3], float *positions, float *normals, float *uvs, float *barycentrics, unsigned char *aos, unsigned int &positionIndex, unsigned int &normalIndex, unsigned int &uvIndex, unsigned int &barycentricIndex, unsigned int &aoIndex, unsigned char *skyLights, unsigned char *torchLights, unsigned int &numOpaquePositions, unsigned int &numTransparentPositions, unsigned char *peeks) {
   positionIndex = 0;
   normalIndex = 0;
   uvIndex = 0;
@@ -791,7 +794,7 @@ void marchingCubes2(int dims[3], float *potential, unsigned char *biomes, unsign
 
   marchingCubesRaw<true>(dimsP1, [&](int x, int y, int z) -> float {
     int ay = shift[1] + y;
-    if (ay < 5) {
+    if (ay < waterLevel) {
       int index = getPotentialIndex(x, y, z, dimsP3);
       return -potential[index];
     } else {

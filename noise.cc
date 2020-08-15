@@ -209,7 +209,7 @@ float getHeight(int seed, float ax, float ay, float az, float baseHeight, int li
   return totalHeight/(float)((4+1+4)*(4+1+4));
 }
 
-void noise3(int seed, float baseHeight, int dims[3], float shifts[3], int limits[3], float wormRate, float wormRadiusBase, float wormRadiusRate, float objectsRate, float offset, float *potential, unsigned char *biomes, unsigned char *heightfield, float *objectPositions, float *objectQuaternions, unsigned int *objectTypes, unsigned int &numObjects, unsigned int maxNumObjects) {
+void noise3(int seed, float baseHeight, int dims[3], float shifts[3], int limits[3], float wormRate, float wormRadiusBase, float wormRadiusRate, float objectsRate, float offset, float *potential, unsigned char *biomes, char *heightfield, float *objectPositions, float *objectQuaternions, unsigned int *objectTypes, unsigned int &numObjects, unsigned int maxNumObjects) {
   memset(potential, 0, (dims[0]+3)*(dims[1]+3)*(dims[2]+3)*sizeof(float));
   memset(biomes, 0, (dims[0]+1)*(dims[2]+1)*sizeof(unsigned char));
   memset(heightfield, 0, dims[0]*dims[1]*dims[2]*sizeof(unsigned char));
@@ -362,7 +362,11 @@ void noise3(int seed, float baseHeight, int dims[3], float shifts[3], int limits
             int heightfieldIndex = x +
               (z * dimsP1[0]) +
               (y * dimsP1[0] * dimsP1[1]);
-            heightfield[heightfieldIndex] = (unsigned char)std::min<float>(std::max<float>(8.0f + 0.5f - (height - w), 0.0f), 8.0f);
+            if (ay >= (float)waterLevel) {
+              heightfield[heightfieldIndex] = (char)std::min<float>(std::max<float>(8.0f + 0.5f - (height - w), 0.0f), 8.0f);
+            } else {
+              heightfield[heightfieldIndex] = (char)-1;
+            }
 
             int biomeIndex = x +
               (z * dimsP1[0]);

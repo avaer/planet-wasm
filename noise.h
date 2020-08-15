@@ -18,6 +18,6 @@ class Noise {
 
 // void noise2(int seed, double frequency, int octaves, int dims[3], float shifts[3], float offset, float *potential);
 float getHeight(int seed, float ax, float ay, float az, float baseHeight, int limits[3]);
-void noise3(int seed, float baseHeight, int dims[3], float shifts[3], int limits[3], float wormRate, float wormRadiusBase, float wormRadiusRate, float objectsRate, float offset, float *potential, unsigned char *biomes, unsigned char *heightfield, float *objectPositions, float *objectQuaternions, unsigned int *objectTypes, unsigned int &numObjects, unsigned int maxNumObjects);
+void noise3(int seed, float baseHeight, int dims[3], float shifts[3], int limits[3], float wormRate, float wormRadiusBase, float wormRadiusRate, float objectsRate, float offset, float *potential, unsigned char *biomes, char *heightfield, float *objectPositions, float *objectQuaternions, unsigned int *objectTypes, unsigned int &numObjects, unsigned int maxNumObjects);
 
 #endif

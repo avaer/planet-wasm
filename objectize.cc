@@ -97,7 +97,7 @@ EMSCRIPTEN_KEEPALIVE void cllideBoxEther(int dims[3], float *potential, int shif
   result[2] = (unsigned int)ceiled;
 } */
 
-EMSCRIPTEN_KEEPALIVE void doMarchingCubes2(int dims[3], float *potential, unsigned char *biomes, unsigned char *heightfield, unsigned char *lightfield, float shift[3], float scale[3], float *positions, float *normals, float *uvs, float *barycentrics, unsigned char *aos, unsigned int *positionIndex, unsigned int *normalIndex, unsigned int *uvIndex, unsigned int *barycentricIndex, unsigned int *aoIndex, unsigned char *skyLights, unsigned char *torchLights, unsigned int &numOpaquePositions, unsigned int &numTransparentPositions, unsigned char *peeks) {
+EMSCRIPTEN_KEEPALIVE void doMarchingCubes2(int dims[3], float *potential, unsigned char *biomes, char *heightfield, unsigned char *lightfield, float shift[3], float scale[3], float *positions, float *normals, float *uvs, float *barycentrics, unsigned char *aos, unsigned int *positionIndex, unsigned int *normalIndex, unsigned int *uvIndex, unsigned int *barycentricIndex, unsigned int *aoIndex, unsigned char *skyLights, unsigned char *torchLights, unsigned int &numOpaquePositions, unsigned int &numTransparentPositions, unsigned char *peeks) {
   marchingCubes2(dims, potential, biomes, heightfield, lightfield, shift, scale, positions, normals, uvs, barycentrics, aos, *positionIndex, *normalIndex, *uvIndex, *barycentricIndex, *aoIndex, skyLights, torchLights, numOpaquePositions, numTransparentPositions, peeks);
 }
 
@@ -109,7 +109,7 @@ EMSCRIPTEN_KEEPALIVE float doGetHeight(int seed, float ax, float ay, float az, f
   return getHeight(seed, ax, ay, az, baseHeight, limits);
 }
 
-EMSCRIPTEN_KEEPALIVE void doNoise3(int seed, float baseHeight, int dims[3], float shifts[3], int limits[3], float wormRate, float wormRadiusBase, float wormRadiusRate, float objectsRate, float offset, float *potential, unsigned char *biomes, unsigned char *heightfield, float *objectPositions, float *objectQuaternions, unsigned int *objectTypes, unsigned int *numObjects, unsigned int maxNumObjects) {
+EMSCRIPTEN_KEEPALIVE void doNoise3(int seed, float baseHeight, int dims[3], float shifts[3], int limits[3], float wormRate, float wormRadiusBase, float wormRadiusRate, float objectsRate, float offset, float *potential, unsigned char *biomes, char *heightfield, float *objectPositions, float *objectQuaternions, unsigned int *objectTypes, unsigned int *numObjects, unsigned int maxNumObjects) {
   noise3(seed, baseHeight, dims, shifts, limits, wormRate, wormRadiusBase, wormRadiusRate, objectsRate, offset, potential, biomes, heightfield, objectPositions, objectQuaternions, objectTypes, *numObjects, maxNumObjects);
 }
 
