@@ -1,5 +1,5 @@
 mkdir -p bin
-emcc --std=c++11 -s WASM=1 -s USE_PTHREADS=1 -O3 -s TOTAL_MEMORY=219938816 \
+emcc --std=c++11 -s WASM=1 -s USE_PTHREADS=1 -O3 -s TOTAL_MEMORY=239992832 \
   FastNoise.cpp noise.cc march.cc vector.cc biomes.cc objectize.cc \
   --pre-js prefix.js --post-js postfix.js \
   -o bin/objectize.js
