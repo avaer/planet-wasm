@@ -296,7 +296,7 @@ class Vec {
           return (*this - v).magnitude_sqr();
         }
 
-        float dot(const Vec &v) {
+        float dot(const Vec &v) const {
           return this->x * v.x + this->y * v.y + this->z * v.z;
         }
 
