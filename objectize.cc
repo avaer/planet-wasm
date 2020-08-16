@@ -105,12 +105,12 @@ EMSCRIPTEN_KEEPALIVE void doMarchingCubes2(int dims[3], float *potential, unsign
   noise2(seed, frequency, octaves, dims, shifts, offset, potential);
 } */
 
-EMSCRIPTEN_KEEPALIVE float doGetHeight(int seed, float ax, float ay, float az, float baseHeight, int limits[3]) {
-  return getHeight(seed, ax, ay, az, baseHeight, limits);
+EMSCRIPTEN_KEEPALIVE float doGetHeight(int seed, float ax, float ay, float az, float baseHeight) {
+  return getHeight(seed, ax, ay, az, baseHeight);
 }
 
-EMSCRIPTEN_KEEPALIVE void doNoise3(int seed, float baseHeight, int dims[3], float shifts[3], int limits[3], float wormRate, float wormRadiusBase, float wormRadiusRate, float objectsRate, float offset, float *potential, unsigned char *biomes, char *heightfield, float *objectPositions, float *objectQuaternions, unsigned int *objectTypes, unsigned int *numObjects, unsigned int maxNumObjects) {
-  noise3(seed, baseHeight, dims, shifts, limits, wormRate, wormRadiusBase, wormRadiusRate, objectsRate, offset, potential, biomes, heightfield, objectPositions, objectQuaternions, objectTypes, *numObjects, maxNumObjects);
+EMSCRIPTEN_KEEPALIVE void doNoise3(int seed, int x, int y, int z, float baseHeight, float wormRate, float wormRadiusBase, float wormRadiusRate, float objectsRate, float potentialDefault, void *subparcelByteOffset) {
+  noise3(seed, x, y, z, baseHeight, wormRate, wormRadiusBase, wormRadiusRate, objectsRate, potentialDefault, subparcelByteOffset);
 }
 
 EMSCRIPTEN_KEEPALIVE void doFree(void *ptr) {

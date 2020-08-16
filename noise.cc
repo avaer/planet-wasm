@@ -6,6 +6,7 @@
 #define _USE_MATH_DEFINES
 #include <cmath>
 #include "biomes.h"
+#include "subparcel.h"
 
 #define PI M_PI
 constexpr int FILL_BOTTOM = 1<<0;
@@ -148,7 +149,7 @@ public:
   std::array<Noise, 7> noises;
 };
 
-float getHeight(int seed, float ax, float ay, float az, float baseHeight, int limits[3]) {
+float getHeight(int seed, float ax, float ay, float az, float baseHeight) {
   // float cx = ax - (float)(limits[0])/2.0f;
   // float cy = ay - (float)(limits[1])/2.0f;
   // float cz = az - (float)(limits[2])/2.0f;
@@ -209,12 +210,57 @@ float getHeight(int seed, float ax, float ay, float az, float baseHeight, int li
   return totalHeight/(float)((4+1+4)*(4+1+4));
 }
 
-void noise3(int seed, float baseHeight, int dims[3], float shifts[3], int limits[3], float wormRate, float wormRadiusBase, float wormRadiusRate, float objectsRate, float offset, float *potential, unsigned char *biomes, char *heightfield, float *objectPositions, float *objectQuaternions, unsigned int *objectTypes, unsigned int &numObjects, unsigned int maxNumObjects) {
-  memset(potential, 0, (dims[0]+3)*(dims[1]+3)*(dims[2]+3)*sizeof(float));
-  memset(biomes, 0, (dims[0]+1)*(dims[2]+1)*sizeof(unsigned char));
-  memset(heightfield, 0, dims[0]*dims[1]*dims[2]*sizeof(unsigned char));
-  TemperatureHumidityNoise thNoises(seed);
+void noise3(int seed, int x, int y, int z, float baseHeight, float wormRate, float wormRadiusBase, float wormRadiusRate, float objectsRate, float potentialDefault, void *subparcelByteOffset) {
+  // std::cout << "wasm subparcel size " << sizeof(Subparcel) << std::endl;
 
+  int dims[3] = {
+    SUBPARCEL_SIZE,
+    SUBPARCEL_SIZE,
+    SUBPARCEL_SIZE,
+  };
+  float shifts[3] = {
+    (float)(x*SUBPARCEL_SIZE),
+    (float)(y*SUBPARCEL_SIZE),
+    (float)(z*SUBPARCEL_SIZE),
+  };
+  int dimsP1[3] = {
+    dims[0]+1,
+    dims[1]+1,
+    dims[2]+1,
+  };
+  int dimsP2[3] = {
+    dims[0]+2,
+    dims[1]+2,
+    dims[2]+2,
+  };
+  int dimsP3[3] = {
+    dims[0]+3,
+    dims[1]+3,
+    dims[2]+3,
+  };
+  int dimsP12[3] = {
+    dims[0]+12,
+    dims[1]+12,
+    dims[2]+12,
+  };
+
+  Subparcel *subparcel = (Subparcel *)subparcelByteOffset;
+  float *potential = subparcel->potentials;
+  unsigned char *biomes = subparcel->biomes;
+  char *heightfield = subparcel->heightfield;
+  unsigned char *lightfield = subparcel->lightfield;
+  unsigned int &numObjects = subparcel->numObjects;
+  Object *objects = subparcel->objects;
+
+  subparcel->x = x;
+  subparcel->y = y;
+  subparcel->z = z;
+  memset(potential, 0, sizeof(subparcel->potentials));
+  memset(biomes, 0, sizeof(subparcel->biomes));
+  memset(heightfield, 0, sizeof(subparcel->heightfield));
+  memset(lightfield, 0, sizeof(subparcel->lightfield));
+
+  TemperatureHumidityNoise thNoises(seed);
   // Noise oceanNoise(seed++, 0.001, 4);
   // Noise riverNoise(seed++, 0.001, 4);
   // Noise temperatureNoise(seed++, 0.001, 4);
@@ -239,27 +285,6 @@ void noise3(int seed, float baseHeight, int dims[3], float shifts[3], int limits
   Noise objectsNoiseX(seed++, 10, 1);
   Noise objectsNoiseZ(seed++, 10, 1);
   Noise objectsTypeNoise(seed++, 10, 1);
-
-  int dimsP1[3] = {
-    dims[0]+1,
-    dims[1]+1,
-    dims[2]+1,
-  };
-  int dimsP2[3] = {
-    dims[0]+2,
-    dims[1]+2,
-    dims[2]+2,
-  };
-  int dimsP3[3] = {
-    dims[0]+3,
-    dims[1]+3,
-    dims[2]+3,
-  };
-  int dimsP12[3] = {
-    dims[0]+12,
-    dims[1]+12,
-    dims[2]+12,
-  };
 
   std::vector<unsigned char> fills(dimsP3[0]*dimsP3[1]*dimsP3[2]);
   std::vector<unsigned char> biomesAux(dimsP12[0]*dimsP12[2]);
@@ -355,7 +380,7 @@ void noise3(int seed, float baseHeight, int dims[3], float shifts[3], int limits
           int potentialIndex = (x + 1) +
             ((z + 1) * dimsP3[0]) +
             ((y + 1) * dimsP3[0] * dimsP3[1]);
-          potential[potentialIndex] = (w < height) ? -offset : offset;
+          potential[potentialIndex] = (w < height) ? -potentialDefault : potentialDefault;
         }
         if (x >= 0 && y >= 0 && z >= 0) {
           if (x < dimsP1[0] && y < dimsP1[1] && z < dimsP1[2]) {
@@ -593,29 +618,41 @@ void noise3(int seed, float baseHeight, int dims[3], float shifts[3], int limits
 
   unsigned int &i = numObjects;
   i = 0;
-  for (int x = 0; x < dims[0] && i < maxNumObjects; x++) {
+  for (int x = 0; x < dims[0] && i < PLANET_OBJECT_SLOTS; x++) {
     float ax = shifts[0] + x;
-    float cx = ax - (float)(limits[0])/2.0f;
-    for (int z = 0; z < dims[2] && i < maxNumObjects; z++) {
+    // float cx = ax - (float)(limits[0])/2.0f;
+    for (int z = 0; z < dims[2] && i < PLANET_OBJECT_SLOTS; z++) {
       float az = shifts[2] + z;
-      float cz = az - (float)(limits[2])/2.0f;
-      for (int y = 0; y < dims[1] && i < maxNumObjects; y++) {
+      // float cz = az - (float)(limits[2])/2.0f;
+      for (int y = 0; y < dims[1] && i < PLANET_OBJECT_SLOTS; y++) {
         float ay = shifts[1] + y;
-        float cy = ay - (float)(limits[1])/2.0f;
+        // float cy = ay - (float)(limits[1])/2.0f;
 
         int fillIndex = x +
           (z * dimsP3[0]) +
           (y * dimsP3[0] * dimsP3[1]);
         if ((bool)(fills[fillIndex]&FILL_BASE)) {
-          if (numObjectsNoise.in3D(cx, cy, cz) < 0.1) {
-            objectPositions[i*3] = ax;
-            objectPositions[i*3+1] = ay;
-            objectPositions[i*3+2] = az;
-            objectQuaternions[i*4] = 0;
-            objectQuaternions[i*4+1] = 0;
-            objectQuaternions[i*4+2] = 0;
-            objectQuaternions[i*4+3] = 1;
-            objectTypes[i] = (unsigned int)std::floor(objectsTypeNoise.in3D(cx + i * 1000.0f, cy + i * 1000.0f, cz + i * 1000.0f) * (float)0xFFFFFF);
+          if (numObjectsNoise.in3D(ax, ay, az) < 0.1) {
+            Object &object = objects[i];
+
+            object.id = (unsigned int)rand();
+            object.type = OBJECT_TYPE::VEGETATION;
+            float nameNoise = objectsTypeNoise.in3D(ax + i * 1000.0f, ay + i * 1000.0f, az + i * 1000.0f);
+            if (nameNoise < SPAWNER_RATE) {
+              strcpy(object.name, "spawner");
+            } else {
+              strcpy(object.name, "tree1");
+            }
+
+            object.position.x = ax;
+            object.position.y = ay;
+            object.position.z = az;
+
+            object.quaternion.x = 0;
+            object.quaternion.y = 0;
+            object.quaternion.z = 0;
+            object.quaternion.w = 1;
+
             i++;
           }
         }
