@@ -412,6 +412,7 @@ class Sphere {
 
     Sphere(const Vec &center, float radius) : center(center), radius(radius) {}
     Sphere(float x, float y, float z, float radius) : center(x, y, z), radius(radius) {}
+    Sphere(const Sphere &sphere) : center(sphere.center), radius(sphere.radius) {}
 };
 
 class Ray {
