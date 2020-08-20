@@ -1,13 +1,9 @@
 #include <emscripten.h>
-#include "util.h"
 #include "compose.h"
 #include "march.h"
-#include "light.h"
-#include "heightfield.h"
-#include "cull.h"
-#include "noiser.h"
 #include "noise.h"
 // #include <iostream>
+#include <cstdlib>
 
 extern "C" {
 
